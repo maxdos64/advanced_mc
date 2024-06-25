@@ -1,3 +1,8 @@
 [submodule "MBTstack"]
 	path = MBTstack
 	url = git@github.com:maxdos64/MBTstack.git
+	branch = main
+[submodule "PatchedMBTstack"]
+	path = PatchedMBTstack
+	url = git@github.com:maxdos64/MBTstack.git
+	branch = pnc_ppe

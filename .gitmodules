@@ -1,0 +1,3 @@
+[submodule "MBTstack"]
+	path = MBTstack
+	url = git@github.com:maxdos64/MBTstack.git

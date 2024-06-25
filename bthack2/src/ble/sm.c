@@ -4410,8 +4410,6 @@ void sm_numeric_comparison_confirm(hci_con_handle_t con_handle){
 		sm_just_works_confirm(con_handle);
 	else
 		sm_conn->sm_engine_state = SM_SC_W2_CALCULATE_G3;
-
-
 }
 
 void sm_passkey_input(hci_con_handle_t con_handle, uint32_t passkey){

@@ -95,67 +95,67 @@ static void local_version_information_handler(uint8_t * packet)
 
 static void l2cap_server_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
 {
-        UNUSED(channel);
+	UNUSED(channel);
 	UNUSED(size);
 
-        bd_addr_t event_address;
-        uint16_t psm;
-        uint16_t temp_connection_id;
-        hci_con_handle_t handle;
+	bd_addr_t event_address;
+	uint16_t psm;
+	uint16_t temp_connection_id;
+	hci_con_handle_t handle;
 
-        switch (packet_type)
-        {
-                case HCI_EVENT_PACKET:
-                        switch (hci_event_packet_get_type(packet))
-                        {
-                                case L2CAP_EVENT_LE_INCOMING_CONNECTION:
-                                        printf("L2CAP: incomming connection\n");
-                                        psm = l2cap_event_le_incoming_connection_get_psm(packet);
-                                        temp_connection_id = l2cap_event_le_incoming_connection_get_local_cid(packet);
-                                        if (psm != TSPX_le_psm)
-                                                break;
-                                        printf("L2CAP: Accepting incoming LE connection request for 0x%02x, PSM %02x\n", temp_connection_id, psm);
-                                        l2cap_le_accept_connection(temp_connection_id, data_channel_buffer, sizeof(data_channel_buffer), initial_credits);
-                                        break;
+	switch (packet_type)
+	{
+		case HCI_EVENT_PACKET:
+			switch (hci_event_packet_get_type(packet))
+			{
+				case L2CAP_EVENT_CBM_INCOMING_CONNECTION:
+					printf("L2CAP: incomming connection\n");
+					psm = l2cap_event_cbm_incoming_connection_get_psm(packet);
+					temp_connection_id = l2cap_event_cbm_incoming_connection_get_local_cid(packet);
+					if (psm != TSPX_le_psm)
+						break;
+					printf("L2CAP: Accepting incoming LE connection request for 0x%02x, PSM %02x\n", temp_connection_id, psm);
+					l2cap_cbm_accept_connection(temp_connection_id, data_channel_buffer, sizeof(data_channel_buffer), initial_credits);
+					break;
 
-                                case L2CAP_EVENT_LE_CHANNEL_OPENED:
-                                        l2cap_event_le_channel_opened_get_address(packet, event_address);
-                                        psm = l2cap_event_le_channel_opened_get_psm(packet);
-                                        temp_connection_id = l2cap_event_le_channel_opened_get_local_cid(packet);
-                                        handle = l2cap_event_le_channel_opened_get_handle(packet);
-                                        if (packet[2] == 0)
-                                        {
-                                                printf("L2CAP: LE Data Channel successfully opened: %s, handle 0x%02x, psm 0x%02x, local connection_id 0x%02x, remote connection_id 0x%02x\n", bd_addr_to_str(event_address), handle, psm, temp_connection_id,  little_endian_read_16(packet, 15));
-                                                connection_id = temp_connection_id;
-                                                l2cap_le_request_can_send_now_event(connection_id);
-                                        }
-                                        else
-                                        {
-                                                printf("L2CAP: LE Data Channel connection to device %s failed. status code %u\n", bd_addr_to_str(event_address), packet[2]);
-                                        }
-                                        break;
+				case L2CAP_EVENT_CBM_CHANNEL_OPENED:
+					l2cap_event_cbm_channel_opened_get_address(packet, event_address);
+					psm = l2cap_event_cbm_channel_opened_get_psm(packet);
+					temp_connection_id = l2cap_event_cbm_channel_opened_get_local_cid(packet);
+					handle = l2cap_event_cbm_channel_opened_get_handle(packet);
+					if (packet[2] == 0)
+					{
+						printf("L2CAP: LE Data Channel successfully opened: %s, handle 0x%02x, psm 0x%02x, local connection_id 0x%02x, remote connection_id 0x%02x\n", bd_addr_to_str(event_address), handle, psm, temp_connection_id,  little_endian_read_16(packet, 15));
+						connection_id = temp_connection_id;
+						l2cap_request_can_send_now_event(connection_id);
+					}
+					else
+					{
+						printf("L2CAP: LE Data Channel connection to device %s failed. status code %u\n", bd_addr_to_str(event_address), packet[2]);
+					}
+					break;
 
-                                case L2CAP_EVENT_LE_CHANNEL_CLOSED:
-                                        printf("RESP: L2CAP: LE Data Channel closed\n");
-                                        connection_id = 0;
-                                        break;
+				case L2CAP_EVENT_CHANNEL_CLOSED:
+					printf("RESP: L2CAP: LE Data Channel closed\n");
+					connection_id = 0;
+					break;
 
-                                /* Start sending the secret */
-                                case L2CAP_EVENT_LE_CAN_SEND_NOW:
-                                        // printf("RESP: L2CAP Can send now\n");
-                                        l2cap_le_send_data(connection_id, (uint8_t *)secret, strlen(secret) + 1);
+					/* Start sending the secret */
+				case L2CAP_EVENT_CAN_SEND_NOW:
+					// printf("RESP: L2CAP Can send now\n");
+					l2cap_send(connection_id, (uint8_t *)secret, strlen(secret) + 1);
 
-                                        /* Request another packet */
-                                        sleep(1);
-                                        l2cap_le_request_can_send_now_event(connection_id);
-                                        break;
-                        }
-                        break;
+					/* Request another packet */
+					sleep(1);
+					l2cap_request_can_send_now_event(connection_id);
+					break;
+			}
+			break;
 
-                case L2CAP_DATA_PACKET:
-                        printf("RESP: Received secret: %s\n", packet);
-                        break;
-        }
+		case L2CAP_DATA_PACKET:
+			printf("RESP: Received secret: %s\n", packet);
+			break;
+	}
 }
 
 static void responder_sm_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
@@ -188,18 +188,18 @@ static void responder_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 					sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
 					break;
 				case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
-					printf("\n\nRESP: Confirming numeric comparison: \e[31m%d\e[0m\n\n\n", sm_event_numeric_comparison_request_get_passkey(packet));
+					printf("\n\nRESP: Confirming numeric comparison: \e[31m%06d\e[0m\n\n\n", sm_event_numeric_comparison_request_get_passkey(packet));
 					sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
 					break;
 				case SM_EVENT_PASSKEY_INPUT_NUMBER:
 					printf("INIT: Passkey Input requested\n Please Enter>\n");
 					fgets(buf, 10, stdin);
 					passkey = (uint32_t) atoi(buf);
-					printf("INIT: Sending passkey %d\n", passkey);
+					printf("INIT: Sending passkey %06d\n", passkey);
 					sm_passkey_input(sm_event_passkey_input_number_get_handle(packet), passkey);
 					break;
 				case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
-					printf("RESP: Display Passkey: %d\n", sm_event_passkey_display_number_get_passkey(packet));
+					printf("RESP: Display Passkey: %06d\n", sm_event_passkey_display_number_get_passkey(packet));
 					break;
 				case SM_EVENT_IDENTITY_CREATED:
 					sm_event_identity_created_get_identity_address(packet, addr);
@@ -299,7 +299,7 @@ static void register_mitm_options(void)
 {
 	struct SmMitmOptions* mitm_options = calloc(1, sizeof(struct SmMitmOptions));
 	mitm_options->turnoff_dhkey_validation = 1;
-	sm_register_mitm_options(mitm_options);
+	// sm_register_mitm_options(mitm_options);
 }
 
 int main(int argc, const char * argv[])
@@ -327,7 +327,7 @@ int main(int argc, const char * argv[])
 	strcpy(pklg_path, "/tmp/hci_dump_test_responder");
 	strcat(pklg_path, ".pklg");
 	printf("Packet Log: %s\n", pklg_path);
-	hci_dump_open(pklg_path, HCI_DUMP_PACKETLOGGER);
+	// hci_dump_log(pklg_path, HCI_DUMP_PACKETLOGGER);
 
 	hci_init(hci_transport_usb_instance(), NULL);
 	l2cap_init();
@@ -338,7 +338,7 @@ int main(int argc, const char * argv[])
 	hci_event_callback_registration.callback = &general_hci_packet_handler;
 	hci_add_event_handler(&hci_event_callback_registration);
 
-	l2cap_register_packet_handler(&l2cap_server_packet_handler);
+	// l2cap_register_packet_handler(&l2cap_server_packet_handler);
 	l2cap_le_register_service(&l2cap_server_packet_handler, TSPX_le_psm, LEVEL_2);
 
 	// LE Secure Connetions, Just Works
@@ -346,8 +346,8 @@ int main(int argc, const char * argv[])
 	//sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION);
 
 	// LE Secure Connections, Numeric Comparison
-	sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_ONLY);
-	// sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_DISPLAY);
+	// sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_ONLY);
+	sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_DISPLAY);
 	// sm_set_io_capabilities(IO_CAPABILITY_DISPLAY_YES_NO);
 	// sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION);
 	sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION|SM_AUTHREQ_MITM_PROTECTION);

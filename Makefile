@@ -1,5 +1,5 @@
 # Makefile for libusb based examples
-BTSTACK_ROOT ?= bthack2
+BTSTACK_ROOT ?= MBTstack
 
 CORE += btstack_stdin_posix.c btstack_tlv_posix.c
 

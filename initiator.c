@@ -77,17 +77,17 @@ static void l2cap_client_packet_handler(uint8_t packet_type, uint16_t channel, u
 		case HCI_EVENT_PACKET:
 			switch (hci_event_packet_get_type(packet))
 			{
-				case L2CAP_EVENT_LE_CHANNEL_OPENED:
-					l2cap_event_le_channel_opened_get_address(packet, event_address);
-					psm = l2cap_event_le_channel_opened_get_psm(packet);
-					temp_connection_id = l2cap_event_le_channel_opened_get_local_cid(packet);
-					handle = l2cap_event_le_channel_opened_get_handle(packet);
+				case L2CAP_EVENT_CBM_CHANNEL_OPENED:
+					l2cap_event_cbm_channel_opened_get_address(packet, event_address);
+					psm = l2cap_event_cbm_channel_opened_get_psm(packet);
+					temp_connection_id = l2cap_event_cbm_channel_opened_get_local_cid(packet);
+					handle = l2cap_event_cbm_channel_opened_get_handle(packet);
 					if (packet[2] == 0)
 					{
 						printf("INIT: L2CAP: LE Data Channel successfully opened: %s, handle 0x%02x, psm 0x%02x, local connection_id 0x%02x, remote connection_id 0x%02x\n", bd_addr_to_str(event_address), handle, psm, temp_connection_id,  little_endian_read_16(packet, 15));
 						connection_id = temp_connection_id;
 						connection_handle = handle;
-						l2cap_le_request_can_send_now_event(connection_id);
+						l2cap_request_can_send_now_event(connection_id);
 					}
 					else
 					{
@@ -95,18 +95,13 @@ static void l2cap_client_packet_handler(uint8_t packet_type, uint16_t channel, u
 					}
 					break;
 
-				case L2CAP_EVENT_LE_CAN_SEND_NOW:
+				case L2CAP_EVENT_CAN_SEND_NOW:
 					// printf("INIT: L2CAP Can send now\n");
-					l2cap_le_send_data(connection_id, (uint8_t *)secret, strlen(secret) + 1);
+					l2cap_send(connection_id, (uint8_t *)secret, strlen(secret) + 1);
 
 					/* Request another packet */
 					sleep(1);
-					l2cap_le_request_can_send_now_event(connection_id);
-					break;
-
-				case L2CAP_EVENT_LE_CHANNEL_CLOSED:
-					temp_connection_id = l2cap_event_le_channel_closed_get_local_cid(packet);
-					printf("INIT: L2CAP LE Data Channel closed 0x%02x\n", temp_connection_id);
+					l2cap_request_can_send_now_event(connection_id);
 					break;
 
 				case L2CAP_EVENT_CHANNEL_CLOSED:
@@ -139,17 +134,17 @@ static void initiator_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 			sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
 			break;
 		case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
-			printf("\n\nINIT: Confirming numeric comparison: \e[31m%d\e[0m\n\n\n", sm_event_numeric_comparison_request_get_passkey(packet));
+			printf("\n\nINIT: Confirming numeric comparison: \e[31m%06d\e[0m\n\n\n", sm_event_numeric_comparison_request_get_passkey(packet));
 			sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
 			break;
 		case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
-			printf("INIT: Display Passkey: %d\n", sm_event_passkey_display_number_get_passkey(packet));
+			printf("INIT: Display Passkey: %06d\n", sm_event_passkey_display_number_get_passkey(packet));
 			break;
 		case SM_EVENT_PASSKEY_INPUT_NUMBER:
 			printf("INIT: Passkey Input requested\n Please Enter>\n");
 			fgets(buf, 10, stdin);
 			passkey = (uint32_t) atoi(buf);
-			printf("INIT: Sending passkey %d\n", passkey);
+			printf("INIT: Sending passkey %06d\n", passkey);
 			sm_passkey_input(sm_event_passkey_input_number_get_handle(packet), passkey);
 			break;
 		case SM_EVENT_PAIRING_COMPLETE:
@@ -302,9 +297,9 @@ static void sigint_handler(int param)
 
 static void register_mitm_options(void)
 {
-	struct SmMitmOptions* mitm_options = calloc(1, sizeof(struct SmMitmOptions));
+	// struct SmMitmOptions* mitm_options = calloc(1, sizeof(struct SmMitmOptions));
 	//mitm_options->turnoff_dhkey_validation = 1;
-	sm_register_mitm_options(mitm_options);
+	// sm_register_mitm_options(mitm_options);
 }
 
 int main(int argc, const char * argv[])
@@ -342,7 +337,7 @@ int main(int argc, const char * argv[])
 	strcpy(pklg_path, "/tmp/hci_dump_test_initiator");
 	strcat(pklg_path, ".pklg");
 	printf("Packet Log: %s\n", pklg_path);
-	hci_dump_open(pklg_path, HCI_DUMP_PACKETLOGGER);
+	// hci_dump_open(pklg_path, HCI_DUMP_PACKETLOGGER);
 
 	hci_init(hci_transport_usb_instance(), NULL);
 

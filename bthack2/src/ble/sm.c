@@ -1409,7 +1409,10 @@ static void sm_sc_state_after_receiving_random(sm_connection_t * sm_conn){
                 if (setup->sm_passkey_bit < 20u) {
                     sm_sc_start_calculating_local_confirm(sm_conn);
                 } else {
-                    sm_sc_prepare_dhkey_check(sm_conn);
+
+						 /* Implementing second stage PPE */
+                    // sm_sc_prepare_dhkey_check(sm_conn);
+                    sm_conn->sm_engine_state = SM_SC_W2_CALCULATE_G3;
                 }
                 break;
             case OOB:
@@ -1459,10 +1462,13 @@ static void sm_sc_cmac_done(uint8_t * hash){
         }
         case SM_SC_W4_CALCULATE_G3: {
             uint32_t vab2 = big_endian_read_32(hash, 12) % 1000000;
+            sm_conn->vab2 = vab2;
             big_endian_store_32(setup->sm_tk, 12, vab2);
            	sm_conn->second_patched_stage = true;
             sm_conn->sm_engine_state = SM_SC_W4_USER_RESPONSE;
             sm_trigger_user_response(sm_conn);
+            if(sm_passkey_entry(setup->sm_stk_generation_method))
+					sm_sc_prepare_dhkey_check(sm_conn);
             break;
         }
         case SM_SC_W4_CALCULATE_F5_SALT:
@@ -1661,6 +1667,7 @@ static void g2_engine(sm_connection_t * sm_conn, const sm_key256_t u, const sm_k
 // req is 56 bits
 // resp is 56 bits
 static void g3_engine(sm_connection_t * sm_conn, uint32_t passkey, const sm_pairing_packet_t req, const sm_pairing_packet_t resp){
+	printf("RUNNING G3 ENGINE!\n");
 	const uint16_t message_len = 3 + 7 + 7;
 	sm_cmac_connection = sm_conn;
 	(void)memcpy(sm_cmac_sc_buffer, &passkey, 3);
@@ -4417,12 +4424,29 @@ void sm_passkey_input(hci_con_handle_t con_handle, uint32_t passkey){
         btstack_crypto_random_generate(&sm_crypto_random_request, setup->sm_local_random, 16, &sm_handle_random_result_ph2_random, (void *)(uintptr_t) sm_conn->sm_handle);
     }
 #ifdef ENABLE_LE_SECURE_CONNECTIONS
-	 sm_conn->vab = passkey;
-    (void)memcpy(setup->sm_ra, setup->sm_tk, 16);
-    (void)memcpy(setup->sm_rb, setup->sm_tk, 16);
-    if (sm_conn->sm_engine_state == SM_SC_W4_USER_RESPONSE){
-        sm_sc_start_calculating_local_confirm(sm_conn);
-    }
+
+	if(sm_conn->second_patched_stage)
+	{
+		/* Compare of local g3 output same as received passkey */
+		if(passkey == sm_conn->vab2)
+		{
+			sm_sc_prepare_dhkey_check(sm_conn);
+			return;
+		}
+		else
+		{
+			/* TODO: fail pairing */
+		}
+	}
+	else
+	{
+		sm_conn->vab = passkey;
+		(void)memcpy(setup->sm_ra, setup->sm_tk, 16);
+		(void)memcpy(setup->sm_rb, setup->sm_tk, 16);
+		if (sm_conn->sm_engine_state == SM_SC_W4_USER_RESPONSE){
+			sm_sc_start_calculating_local_confirm(sm_conn);
+		}
+	}
 #endif
     sm_run();
 }

@@ -346,8 +346,8 @@ int main(int argc, const char * argv[])
 	//sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION);
 
 	// LE Secure Connections, Numeric Comparison
-	// sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_ONLY);
-	sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_DISPLAY);
+	sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_ONLY);
+	// sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_DISPLAY);
 	// sm_set_io_capabilities(IO_CAPABILITY_DISPLAY_YES_NO);
 	// sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION);
 	sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION|SM_AUTHREQ_MITM_PROTECTION);

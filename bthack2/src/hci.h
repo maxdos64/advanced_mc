@@ -416,6 +416,7 @@ typedef struct sm_connection {
     uint8_t                  sm_local_rand[8];
     int                      sm_le_db_index;
 	uint32_t							vab;
+	uint32_t							vab2;
 	bool								second_patched_stage;
 } sm_connection_t;
 

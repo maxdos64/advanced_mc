@@ -4435,7 +4435,7 @@ void sm_passkey_input(hci_con_handle_t con_handle, uint32_t passkey){
 		}
 		else
 		{
-			/* TODO: fail pairing */
+			sm_pairing_error(sm_conn, SM_REASON_PASSKEY_ENTRY_FAILED);
 		}
 	}
 	else

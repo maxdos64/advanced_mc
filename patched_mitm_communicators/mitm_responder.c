@@ -8,7 +8,7 @@
 
 #include "btstack_debug.h"
 #include "btstack_event.h"
-#include "btstack_link_key_db_fs.h"
+// #include "btstack_link_key_db_fs.h"
 #include "btstack_memory.h"
 #include "btstack_run_loop.h"
 #include "btstack_run_loop_posix.h"
@@ -16,20 +16,22 @@
 #include "hci.h"
 #include "hci_dump.h"
 #include "btstack_stdin.h"
-#include "btstack_audio.h"
+// #include "btstack_audio.h"
 #include "btstack_tlv_posix.h"
 #include "bluetooth_data_types.h"
 #include "bluetooth_company_id.h"
-#include "../chipset/zephyr/btstack_chipset_zephyr.h"
-#include "ble/le_device_db.h"
-#include "ble/att_server.h"
+#include "btstack_chipset_zephyr.h"
+#include "le_device_db.h"
+#include "att_server.h"
+#include <libusb.h>
+#include <unistd.h>
 #include <unistd.h>
 
 #include <libusb.h>
 #include <sys/wait.h>
 
-#include "profiles.h"
-#include "btstack_config.h"
+#include "../profiles.h"
+#include "../btstack_config.h"
 
 #define TLV_DB_PATH_PREFIX "/tmp/btstack_"
 #define TLV_DB_PATH_POSTFIX ".tlv"
@@ -297,8 +299,8 @@ static void sigint_handler(int param)
 
 static void register_mitm_options(void)
 {
-	struct SmMitmOptions* mitm_options = calloc(1, sizeof(struct SmMitmOptions));
-	mitm_options->turnoff_dhkey_validation = 1;
+	// struct SmMitmOptions* mitm_options = calloc(1, sizeof(struct SmMitmOptions));
+	// mitm_options->turnoff_dhkey_validation = 1;
 	// sm_register_mitm_options(mitm_options);
 }
 

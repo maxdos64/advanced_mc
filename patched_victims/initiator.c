@@ -8,9 +8,28 @@
 #include <time.h>
 #include <sys/wait.h>
 
+
+// #include "PatchedMBTstack/src/btstack_debug.h"
+// #include "PatchedMBTstack/src/btstack_event.h"
+// // #include "btstack_link_key_db_fs.h"
+// #include "PatchedMBTstack/src/btstack_memory.h"
+// #include "PatchedMBTstack/src/btstack_run_loop.h"
+// #include "PatchedMBTstack/platform/posix/btstack_run_loop_posix.h"
+// #include "PatchedMBTstack/platform/embedded/hal_led.h"
+// #include "PatchedMBTstack/src/hci.h"
+// #include "PatchedMBTstack/src/hci_dump.h"
+// #include "PatchedMBTstack/src/btstack_stdin.h"
+// // #include "btstack_audio.h"
+// #include "PatchedMBTstack/platform/posix/btstack_tlv_posix.h"
+// #include "PatchedMBTstack/src/bluetooth_data_types.h"
+// #include "PatchedMBTstack/src/bluetooth_company_id.h"
+// #include "PatchedMBTstack/chipset/zephyr/btstack_chipset_zephyr.h"
+// #include "PatchedMBTstack/src/ble/le_device_db.h"
+// #include "PatchedMBTstack/src/ble/att_server.h"
+
 #include "btstack_debug.h"
 #include "btstack_event.h"
-#include "btstack_link_key_db_fs.h"
+// #include "btstack_link_key_db_fs.h"
 #include "btstack_memory.h"
 #include "btstack_run_loop.h"
 #include "btstack_run_loop_posix.h"
@@ -18,19 +37,18 @@
 #include "hci.h"
 #include "hci_dump.h"
 #include "btstack_stdin.h"
-#include "btstack_audio.h"
+// #include "btstack_audio.h"
 #include "btstack_tlv_posix.h"
 #include "bluetooth_data_types.h"
 #include "bluetooth_company_id.h"
-#include "../chipset/zephyr/btstack_chipset_zephyr.h"
-#include "ble/le_device_db.h"
-#include "ble/att_server.h"
+#include "btstack_chipset_zephyr.h"
+#include "le_device_db.h"
+#include "att_server.h"
+#include <libusb.h>
 #include <unistd.h>
 
-#include <libusb.h>
-
-#include "profiles.h"
-#include "btstack_config.h"
+#include "../profiles.h"
+#include "../btstack_config.h"
 
 #define USB_MAX_PATH_LEN 7
 #define FIXED_PASSKEY 123456

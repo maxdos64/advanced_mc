@@ -152,15 +152,25 @@ int main(int argc, const char * argv[])
 	/* Tell the initiator to start connecting to victim */
 	ipc_write(master_to_initiator, buf, 1);
 
-	/* Wait for responder to calculate and tell us first display value (va) 20bit ~ 3 bytes */
+	/* Wait for responder to calculate and tell us first display value (va) */
 	ipc_read(master_from_responder, buf, sizeof(uint32_t));
 	/* Pass va to Initiator to go through first round of PE and automatically initate second PE with victim */
 	ipc_write(master_to_initiator, buf, sizeof(uint32_t));
 
-	/* Wait for Responder to calculate and tell us second display value (va2) 20bit ~ 3 bytes */
-	ipc_read(master_from_responder, buf, 3);
+	printf("11111111\n");
+	/* Wait for Initiator to confirm success of first PE pairing */
+	// ipc_read(master_from_initiator, buf, 1);
+	printf("2222222222222\n");
+	/* Tell Responder to continue to second stage (by confirming NC) */
+	ipc_write(master_to_responder, buf, 1);
+	printf("33333\n");
+
+	/* Wait for Responder to calculate and tell us second display value (va2) */
+	printf("AAAAAA\n");
+	ipc_read(master_from_responder, buf, sizeof(uint32_t));
+	printf("BBBBB\n");
 	/* Pass va2 to Initiator to go through second round of PE */
-	ipc_write(master_to_initiator, buf, 3);
+	ipc_write(master_to_initiator, buf, sizeof(uint32_t));
 
 	/* TODO: Start forwarding messages */
 

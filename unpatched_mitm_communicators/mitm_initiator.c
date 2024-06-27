@@ -46,6 +46,7 @@
 #include "att_server.h"
 #include <libusb.h>
 #include <unistd.h>
+#include "le_device_db.h"
 
 #include "../profiles.h"
 #include "../btstack_config.h"
@@ -65,8 +66,11 @@ int initiator_from_master;
 
 /* Globals */
 bd_addr_t target_mac;
-static uint8_t data_channel_buffer[TEST_PACKET_SIZE];
+// static uint8_t data_channel_buffer[TEST_PACKET_SIZE];
 const char secret[] = "flag{INITIATOR_SECRET}";
+bd_addr_t target_address;
+uint8_t target_address_type;
+hci_con_handle_t con_handle;
 
 static btstack_packet_callback_registration_t hci_event_callback_registration;
 static btstack_packet_callback_registration_t sm_event_callback_registration;
@@ -88,74 +92,90 @@ static void ipc_read(int fd, char *buf, size_t size)
 {
 	if((size_t)read(fd, buf, size) != size)
 	{
-		printf("MASTER: IPC read error\n");
+		printf("INIT: IPC read error\n");
 		raise(SIGINT);
 	}
 }
 
-// static void ipc_write(int fd, char *buf, size_t size)
-// {
-// 	if((size_t)write(fd, buf, size) != size)
-// 	{
-// 		printf("MASTER: IPC write error\n");
-// 		raise(SIGINT);
-// 	}
-// }
+static void le_device_delete_all(void){
+	uint16_t index;
+	uint16_t max_count = le_device_db_max_count();
+	for (index =0 ; index < max_count; index++){
+		int addr_type;
+		bd_addr_t addr;
+		memset(addr, 0, 6);
+		le_device_db_info(index, &addr_type, addr, NULL);
+		if (addr_type != BD_ADDR_TYPE_UNKNOWN){
+			log_info("Remove LE Device with index %u, addr type %x, addr %s", index, addr_type, bd_addr_to_str(addr));
+			le_device_db_remove(index);
+		}
+	}
+	le_device_db_dump();
+}
 
-static void l2cap_client_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
+static void ipc_write(int fd, char *buf, size_t size)
 {
-	UNUSED(channel);
-	UNUSED(size);
-
-	bd_addr_t event_address;
-	uint16_t psm;
-	uint16_t temp_connection_id;
-	hci_con_handle_t handle;
-
-	switch (packet_type)
+	if((size_t)write(fd, buf, size) != size)
 	{
-		case HCI_EVENT_PACKET:
-			switch (hci_event_packet_get_type(packet))
-			{
-				case L2CAP_EVENT_CBM_CHANNEL_OPENED:
-					l2cap_event_cbm_channel_opened_get_address(packet, event_address);
-					psm = l2cap_event_cbm_channel_opened_get_psm(packet);
-					temp_connection_id = l2cap_event_cbm_channel_opened_get_local_cid(packet);
-					handle = l2cap_event_cbm_channel_opened_get_handle(packet);
-					if (packet[2] == 0)
-					{
-						printf("INIT: L2CAP: LE Data Channel successfully opened: %s, handle 0x%02x, psm 0x%02x, local connection_id 0x%02x, remote connection_id 0x%02x\n", bd_addr_to_str(event_address), handle, psm, temp_connection_id,  little_endian_read_16(packet, 15));
-						connection_id = temp_connection_id;
-						connection_handle = handle;
-						l2cap_request_can_send_now_event(connection_id);
-					}
-					else
-					{
-						printf("INIT: L2CAP: LE Data Channel connection to device %s failed. status code %u\n", bd_addr_to_str(event_address), packet[2]);
-					}
-					break;
-
-				case L2CAP_EVENT_CAN_SEND_NOW:
-					// printf("INIT: L2CAP Can send now\n");
-					l2cap_send(connection_id, (uint8_t *)secret, strlen(secret) + 1);
-
-					/* Request another packet */
-					sleep(1);
-					l2cap_request_can_send_now_event(connection_id);
-					break;
-
-				case L2CAP_EVENT_CHANNEL_CLOSED:
-					printf("INIT: L2Cap connection closed\n");
-					break;
-
-			}
-			break;
-
-		case L2CAP_DATA_PACKET:
-			printf("INIT: Received secret: %s\n", packet);
-			break;
+		printf("INIT: IPC write error\n");
+		raise(SIGINT);
 	}
 }
+
+// static void l2cap_client_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
+// {
+// 	UNUSED(channel);
+// 	UNUSED(size);
+// 
+// 	bd_addr_t event_address;
+// 	uint16_t psm;
+// 	uint16_t temp_connection_id;
+// 	hci_con_handle_t handle;
+// 
+// 	switch (packet_type)
+// 	{
+// 		case HCI_EVENT_PACKET:
+// 			switch (hci_event_packet_get_type(packet))
+// 			{
+// 				case L2CAP_EVENT_CBM_CHANNEL_OPENED:
+// 					l2cap_event_cbm_channel_opened_get_address(packet, event_address);
+// 					psm = l2cap_event_cbm_channel_opened_get_psm(packet);
+// 					temp_connection_id = l2cap_event_cbm_channel_opened_get_local_cid(packet);
+// 					handle = l2cap_event_cbm_channel_opened_get_handle(packet);
+// 					if (packet[2] == 0)
+// 					{
+// 						printf("INIT: L2CAP: LE Data Channel successfully opened: %s, handle 0x%02x, psm 0x%02x, local connection_id 0x%02x, remote connection_id 0x%02x\n", bd_addr_to_str(event_address), handle, psm, temp_connection_id,  little_endian_read_16(packet, 15));
+// 						connection_id = temp_connection_id;
+// 						connection_handle = handle;
+// 						l2cap_request_can_send_now_event(connection_id);
+// 					}
+// 					else
+// 					{
+// 						printf("INIT: L2CAP: LE Data Channel connection to device %s failed. status code %u\n", bd_addr_to_str(event_address), packet[2]);
+// 					}
+// 					break;
+// 
+// 				case L2CAP_EVENT_CAN_SEND_NOW:
+// 					// printf("INIT: L2CAP Can send now\n");
+// 					l2cap_send(connection_id, (uint8_t *)secret, strlen(secret) + 1);
+// 
+// 					/* Request another packet */
+// 					sleep(1);
+// 					l2cap_request_can_send_now_event(connection_id);
+// 					break;
+// 
+// 				case L2CAP_EVENT_CHANNEL_CLOSED:
+// 					printf("INIT: L2Cap connection closed\n");
+// 					break;
+// 
+// 			}
+// 			break;
+// 
+// 		case L2CAP_DATA_PACKET:
+// 			printf("INIT: Received secret: %s\n", packet);
+// 			break;
+// 	}
+// }
 
 static void initiator_sm_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
 {
@@ -192,9 +212,14 @@ static void initiator_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 			{
 				case ERROR_CODE_SUCCESS:
 					printf("INIT: Pairing complete, success\n");
-
-					printf("INIT: Establishing L2CAP channel\n");
-					l2cap_le_create_channel(&l2cap_client_packet_handler, connection_handle, TSPX_le_psm, data_channel_buffer, sizeof(data_channel_buffer), L2CAP_LE_AUTOMATIC_CREDITS, LEVEL_2, &connection_id);
+					/* Confirm success of PE pairing to master (and thus continue to next stage or finish) */
+					ipc_write(initiator_to_master, buf, 1);
+					/* Issue a new connection request */
+					// gap_connect(target_address, target_address_type);
+					le_device_delete_all();
+					sm_request_pairing(con_handle);
+					// printf("INIT: Establishing L2CAP channel\n");
+					// l2cap_le_create_channel(&l2cap_client_packet_handler, connection_handle, TSPX_le_psm, data_channel_buffer, sizeof(data_channel_buffer), L2CAP_LE_AUTOMATIC_CREDITS, LEVEL_2, &connection_id);
 					break;
 				case ERROR_CODE_CONNECTION_TIMEOUT:
 					printf("INIT: Pairing failed, timeout\n");
@@ -266,10 +291,8 @@ static void initiator_hci_packet_handler(uint8_t packet_type, uint16_t channel, 
 {
 	UNUSED(channel);
 	UNUSED(size);
-	bd_addr_t address;
 
 	if (packet_type != HCI_EVENT_PACKET) return;
-	hci_con_handle_t con_handle;
 
 	switch (hci_event_packet_get_type(packet)) {
 		case BTSTACK_EVENT_STATE:
@@ -282,22 +305,22 @@ static void initiator_hci_packet_handler(uint8_t packet_type, uint16_t channel, 
 			}
 			break;
 		case GAP_EVENT_ADVERTISING_REPORT:
-			gap_event_advertising_report_get_address(packet, address);
-			uint8_t address_type = gap_event_advertising_report_get_address_type(packet);
+			gap_event_advertising_report_get_address(packet, target_address);
+			target_address_type = gap_event_advertising_report_get_address_type(packet);
 			//uint8_t length = gap_event_advertising_report_get_data_length(packet);
 			//const uint8_t * data = gap_event_advertising_report_get_data(packet);
 			//printf("adv\n");
-			if (new_advertisement((uint8_t*) address) == 1)
+			if (new_advertisement((uint8_t*) target_address) == 1)
 				print_advertisements();
-			//printf("Advertisement event: addr-type %u, addr %s, data[%u] ", address_type, bd_addr_to_str(address), length);
+			//printf("Advertisement event: addr-type %u, addr %s, data[%u] ", target_address_type, bd_addr_to_str(target_address), length);
 			//printf_hexdump(data, length);
 			//if(!ad_data_contains_uuid16(length, (uint8_t *) data, REMOTE_SERVICE))
 			//	break;
-			if(memcmp(address, target_mac, sizeof(bd_addr_t)) == 0)
+			if(memcmp(target_address, target_mac, sizeof(bd_addr_t)) == 0)
 			{
-				printf("INIT: Found targeted remote (%s) with UUID %04x, connecting...\n", bd_addr_to_str(address), REMOTE_SERVICE);
+				printf("INIT: Found targeted remote (%s) with UUID %04x, connecting...\n", bd_addr_to_str(target_address), REMOTE_SERVICE);
 				gap_stop_scan();
-				gap_connect(address, address_type);
+				gap_connect(target_address, target_address_type);
 			}
 			break;
 		case HCI_EVENT_LE_META:

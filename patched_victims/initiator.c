@@ -141,6 +141,7 @@ static void initiator_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 	UNUSED(size);
 	char buf[10];
 	uint32_t passkey;
+	char response = 'n';
 
 	if(packet_type != HCI_EVENT_PACKET)
 		return;
@@ -152,8 +153,17 @@ static void initiator_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 			sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
 			break;
 		case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
-			printf("\n\nINIT: Confirming numeric comparison: \e[31m%06d\e[0m\n\n\n", sm_event_numeric_comparison_request_get_passkey(packet));
-			sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
+			printf("\n\nINIT: Confirming numeric comparison: \e[31m%06d\e[0m ? (y/n): ", sm_event_numeric_comparison_request_get_passkey(packet));
+			scanf("%c\n", &response);
+			if(response == 'y')
+			{
+				sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
+			}
+			else
+			{
+				printf("---------- ABORT PAIRING response: %x !!!\n", response);
+				/* TODO: Abort Pairing */
+			}
 			break;
 		case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
 			printf("INIT: Display Passkey: %06d\n", sm_event_passkey_display_number_get_passkey(packet));

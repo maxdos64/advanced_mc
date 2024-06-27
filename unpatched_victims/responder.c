@@ -308,22 +308,25 @@ int main(int argc, const char * argv[])
 {
 	char pklg_path[100];
 	uint8_t responder_usb_device_id;
+	uint8_t responder_usb_device_bus;
 
 	/* Parse arguments */
 	if(argc < 2)
 	{
 		printf("Too few arguments provided\n");
-		printf("Usage:./%s responder_device_id\n", argv[0]);
+		printf("Usage:./%s initiator_usb_bus:responder_device_id\n", argv[0]);
 		exit(0);
 	}
-	responder_usb_device_id = strtol(argv[1], 0, 10);
+
+	sscanf(argv[1], "%hhd:%hhd", (char *)&responder_usb_device_bus, (char *)&responder_usb_device_id);
+	printf("RESP: Using USB bus %d with address %d\n", responder_usb_device_bus, responder_usb_device_id);
 
 	signal(SIGINT, sigint_handler);
 
 	btstack_memory_init();
 	btstack_run_loop_init(btstack_run_loop_posix_get_instance());
 
-	hci_transport_usb_set_address(responder_usb_device_id);
+	hci_transport_usb_set_address(responder_usb_device_bus, responder_usb_device_id);
 
 	/* Logger */
 	strcpy(pklg_path, "/tmp/hci_dump_test_responder");

@@ -42,6 +42,10 @@ const char secret[] = "flag{RESPONDER_SECRET}";
 
 /* Helper structs */
 
+/* FDs for IPC */
+int responder_to_master;
+int responder_from_master;
+
 /* Globals */
 static char tlv_db_path[100];
 static const btstack_tlv_t * tlv_impl;
@@ -70,6 +74,24 @@ const uint8_t adv_data[] = {
 	0x03, BLUETOOTH_DATA_TYPE_INCOMPLETE_LIST_OF_16_BIT_SERVICE_CLASS_UUIDS, 0x11, 0x11,
 };
 const uint8_t adv_data_len = sizeof(adv_data);
+
+// static void ipc_read(int fd, char *buf, size_t size)
+// {
+// 	if((size_t)read(fd, buf, size) != size)
+// 	{
+// 		printf("MASTER: IPC read error\n");
+// 		raise(SIGINT);
+// 	}
+// }
+
+static void ipc_write(int fd, char *buf, size_t size)
+{
+	if((size_t)write(fd, buf, size) != size)
+	{
+		printf("MASTER: IPC write error\n");
+		raise(SIGINT);
+	}
+}
 
 static void local_version_information_handler(uint8_t * packet)
 {
@@ -178,11 +200,14 @@ static void responder_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 						case HCI_SUBEVENT_LE_CONNECTION_COMPLETE:
 							// setup new
 							printf("RESP: Connection complete\n");
-                    hci_con_handle = hci_subevent_le_connection_complete_get_connection_handle(packet);
-						  sm_send_security_request(hci_con_handle);
-						  break;
+							/* Let master know that we were being connected to */
+							ipc_write(responder_to_master, buf, 1);
+
+							hci_con_handle = hci_subevent_le_connection_complete_get_connection_handle(packet);
+							sm_send_security_request(hci_con_handle);
+							break;
 						default:
-						  break;
+							break;
 					}
 					break;
 				case SM_EVENT_JUST_WORKS_REQUEST:
@@ -191,6 +216,9 @@ static void responder_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 					break;
 				case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
 					printf("\n\nRESP: Confirming numeric comparison: \e[31m%06d\e[0m\n\n\n", sm_event_numeric_comparison_request_get_passkey(packet));
+					passkey = sm_event_numeric_comparison_request_get_passkey(packet);
+					/* Tell first displayed value (va) to master */
+					ipc_write(responder_to_master, (char*)&passkey, sizeof(uint32_t));
 					sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
 					break;
 				case SM_EVENT_PASSKEY_INPUT_NUMBER:
@@ -281,6 +309,7 @@ static void general_hci_packet_handler(uint8_t packet_type, uint16_t channel, ui
 	}
 }
 
+
 static void sigint_handler(int param)
 {
 	UNUSED(param);
@@ -308,28 +337,36 @@ int main(int argc, const char * argv[])
 {
 	char pklg_path[100];
 	uint8_t responder_usb_device_id;
+	uint8_t responder_usb_device_bus;
 
 	/* Parse arguments */
-	if(argc < 2)
+	if(argc < 4)
 	{
 		printf("Too few arguments provided\n");
-		printf("Usage:./%s responder_device_id\n", argv[0]);
+		printf("Usage:./%s responder_usb_bus:responder_device_id\n", argv[0]);
 		exit(0);
 	}
-	responder_usb_device_id = strtol(argv[1], 0, 10);
+	sscanf(argv[1], "%hhd:%hhd", (char *)&responder_usb_device_bus, (char *)&responder_usb_device_id);
+	printf("RESP: Using USB bus %d with address %d\n", responder_usb_device_bus, responder_usb_device_id);
+
+	responder_to_master = strtol(argv[2], 0, 10);
+	responder_from_master = strtol(argv[3], 0, 10);
+
+	printf("RESP: FD responder_to_master: %d\n", responder_to_master);
+	printf("RESP: FD responder_from_master: %d\n", responder_from_master);
 
 	signal(SIGINT, sigint_handler);
 
 	btstack_memory_init();
 	btstack_run_loop_init(btstack_run_loop_posix_get_instance());
 
-	hci_transport_usb_set_address(responder_usb_device_id);
+	hci_transport_usb_set_address(responder_usb_device_bus, responder_usb_device_id);
 
 	/* Logger */
-	strcpy(pklg_path, "/tmp/hci_dump_test_responder");
+	strcpy(pklg_path, "/tmp/hci_dump_test_mitm_responder");
 	strcat(pklg_path, ".pklg");
 	printf("Packet Log: %s\n", pklg_path);
-	// hci_dump_log(pklg_path, HCI_DUMP_PACKETLOGGER);
+	// hci_dump_open(pklg_path, HCI_DUMP_PACKETLOGGER);
 
 	hci_init(hci_transport_usb_instance(), NULL);
 	l2cap_init();
@@ -349,8 +386,8 @@ int main(int argc, const char * argv[])
 
 	// LE Secure Connections, Numeric Comparison
 	// sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_ONLY);
-	sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_DISPLAY);
-	// sm_set_io_capabilities(IO_CAPABILITY_DISPLAY_YES_NO);
+	// sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_DISPLAY);
+	sm_set_io_capabilities(IO_CAPABILITY_DISPLAY_YES_NO);
 	// sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION);
 	sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION|SM_AUTHREQ_MITM_PROTECTION);
 

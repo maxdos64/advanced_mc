@@ -84,6 +84,24 @@ const uint8_t adv_data[] = {
 };
 const uint8_t adv_data_len = sizeof(adv_data);
 
+static void ipc_read(int fd, char *buf, size_t size)
+{
+	if((size_t)read(fd, buf, size) != size)
+	{
+		printf("MASTER: IPC read error\n");
+		raise(SIGINT);
+	}
+}
+
+// static void ipc_write(int fd, char *buf, size_t size)
+// {
+// 	if((size_t)write(fd, buf, size) != size)
+// 	{
+// 		printf("MASTER: IPC write error\n");
+// 		raise(SIGINT);
+// 	}
+// }
+
 static void l2cap_client_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
 {
 	UNUSED(channel);
@@ -317,51 +335,48 @@ static void sigint_handler(int param)
 	exit(0);
 }
 
-
-static void ipc_read(int fd, char *buf, size_t size)
+static void initiator_set_custom_passkey(uint32_t* tk)
 {
-	if((size_t)read(fd, buf, size) != size)
+	printf("INIT: old tk %d\n", *tk);
+
+	/* Waiting for Va */
+	ipc_read(initiator_from_master, (char*)tk, sizeof(uint32_t));
+
+	printf("INIT: new passkey %d\n", *tk);
+
+	if (*tk < 100000)
 	{
-		printf("MASTER: IPC read error\n");
+		printf("INIT: passkey has leading 0, abort\n");
 		raise(SIGINT);
 	}
+	printf("INIT: new tk %d\n", *tk);
 }
 
-// static void ipc_write(int fd, char *buf, size_t size)
-// {
-// 	if((size_t)write(fd, buf, size) != size)
-// 	{
-// 		printf("MASTER: IPC write error\n");
-// 		raise(SIGINT);
-// 	}
-// }
 
 static void register_mitm_options(void)
 {
-	// struct SmMitmOptions* mitm_options = calloc(1, sizeof(struct SmMitmOptions));
-	//mitm_options->turnoff_dhkey_validation = 1;
-	// sm_register_mitm_options(mitm_options);
+	struct SmMitmOptions* mitm_options = calloc(1, sizeof(struct SmMitmOptions));
+	mitm_options->initiator_set_custom_passkey_callback = &initiator_set_custom_passkey;
+	sm_register_mitm_options(mitm_options);
 }
 
 int main(int argc, const char * argv[])
 {
 	char pklg_path[100];
-	int initiator_usb_device_id;
+	uint8_t initiator_usb_device_id;
+	uint8_t initiator_usb_device_bus;
 	char buf[100];
 
 	/* Parse arguments */
 	if(argc < 5)
 	{
 		printf("Too few arguments provided\n");
-		printf("Usage:./%s initiator_device_id target_mac[aa:bb:cc:dd:ee:ff]\n", argv[0]);
+		printf("Usage:./%s initiator_usb_bus:initiator_device_id target_mac[aa:bb:cc:dd:ee:ff]\n", argv[0]);
 		exit(0);
 	}
-	initiator_usb_device_id = strtol(argv[1], 0, 10);
-	if(initiator_usb_device_id > 0xff)
-	{
-		printf("Error: Device ID invalid\n");
-		return 0;
-	}
+
+	sscanf(argv[1], "%hhd:%hhd", (char *)&initiator_usb_device_bus, (char *)&initiator_usb_device_id);
+	printf("INIT: Using USB bus %d with address %d\n", initiator_usb_device_bus, initiator_usb_device_id);
 
 	if(sscanf_bd_addr(argv[2], target_mac) == 0)
 	{
@@ -380,10 +395,10 @@ int main(int argc, const char * argv[])
 	btstack_memory_init();
 	btstack_run_loop_init(btstack_run_loop_posix_get_instance());
 
-	hci_transport_usb_set_address(initiator_usb_device_id);
+	hci_transport_usb_set_address(initiator_usb_device_bus, initiator_usb_device_id);
 
 	/* Logger */
-	strcpy(pklg_path, "/tmp/hci_dump_test_initiator");
+	strcpy(pklg_path, "/tmp/hci_dump_test_mitm_initiator");
 	strcat(pklg_path, ".pklg");
 	printf("Packet Log: %s\n", pklg_path);
 	// hci_dump_open(pklg_path, HCI_DUMP_PACKETLOGGER);
@@ -412,9 +427,9 @@ int main(int argc, const char * argv[])
 	/* LE Secure Connections, Passkey Entry */
 	// sm_set_io_capabilities(IO_CAPABILITY_DISPLAY_YES_NO);
 	// sm_set_authentication_requirements(IO_CAPABILITY_NO_INPUT_NO_OUTPUT);
-	sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_DISPLAY);
+	// sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_DISPLAY);
 	// sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_ONLY);
-	// sm_set_io_capabilities(IO_CAPABILITY_DISPLAY_ONLY);
+	sm_set_io_capabilities(IO_CAPABILITY_DISPLAY_ONLY);
 	// sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION|SM_AUTHREQ_MITM_PROTECTION);
 	// sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION);
 	sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION|SM_AUTHREQ_MITM_PROTECTION);

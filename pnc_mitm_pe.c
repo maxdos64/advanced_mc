@@ -108,7 +108,7 @@ int main(int argc, const char * argv[])
 	master_from_initiator = pipe_fd[0];
 	/* Pipe between responder and master */
 	master_to_responder  = pipe_fd[1];
-	initiator_from_master = pipe_fd[0];
+	responder_from_master = pipe_fd[0];
 	pipe(pipe_fd);
 	responder_to_master   = pipe_fd[1];
 	master_from_responder = pipe_fd[0];
@@ -153,9 +153,9 @@ int main(int argc, const char * argv[])
 	ipc_write(master_to_initiator, buf, 1);
 
 	/* Wait for responder to calculate and tell us first display value (va) 20bit ~ 3 bytes */
-	ipc_read(master_from_responder, buf, 3);
+	ipc_read(master_from_responder, buf, sizeof(uint32_t));
 	/* Pass va to Initiator to go through first round of PE and automatically initate second PE with victim */
-	ipc_write(master_to_initiator, buf, 3);
+	ipc_write(master_to_initiator, buf, sizeof(uint32_t));
 
 	/* Wait for Responder to calculate and tell us second display value (va2) 20bit ~ 3 bytes */
 	ipc_read(master_from_responder, buf, 3);

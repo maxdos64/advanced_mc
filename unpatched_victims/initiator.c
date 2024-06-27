@@ -323,21 +323,20 @@ static void register_mitm_options(void)
 int main(int argc, const char * argv[])
 {
 	char pklg_path[100];
-	int initiator_usb_device_id;
+	uint8_t initiator_usb_device_id;
+	uint8_t initiator_usb_device_bus;
 
 	/* Parse arguments */
 	if(argc < 3)
 	{
 		printf("Too few arguments provided\n");
-		printf("Usage:./%s initiator_device_id target_mac[aa:bb:cc:dd:ee:ff]\n", argv[0]);
+		printf("Usage:./%s initiator_usb_bus:initiator_device_id target_mac[aa:bb:cc:dd:ee:ff]\n", argv[0]);
 		exit(0);
 	}
-	initiator_usb_device_id = strtol(argv[1], 0, 10);
-	if(initiator_usb_device_id > 0xff)
-	{
-		printf("Error: Device ID invalid\n");
-		return 0;
-	}
+
+	sscanf(argv[1], "%hhd:%hhd", (char *)&initiator_usb_device_bus, (char *)&initiator_usb_device_id);
+	printf("INIT: Using USB bus %d with address %d\n", initiator_usb_device_bus, initiator_usb_device_id);
+
 	if(sscanf_bd_addr(argv[2], target_mac) == 0)
 	{
 		printf("MAC provided appears invalid\n");
@@ -349,7 +348,7 @@ int main(int argc, const char * argv[])
 	btstack_memory_init();
 	btstack_run_loop_init(btstack_run_loop_posix_get_instance());
 
-	hci_transport_usb_set_address(initiator_usb_device_id);
+	hci_transport_usb_set_address(initiator_usb_device_bus, initiator_usb_device_id);
 
 	/* Logger */
 	strcpy(pklg_path, "/tmp/hci_dump_test_initiator");

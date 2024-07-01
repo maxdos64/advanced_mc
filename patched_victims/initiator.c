@@ -36,6 +36,7 @@
 #include "hal_led.h"
 #include "hci.h"
 #include "hci_dump.h"
+#include "hci_dump_posix_fs.h"
 #include "btstack_stdin.h"
 // #include "btstack_audio.h"
 #include "btstack_tlv_posix.h"
@@ -140,8 +141,8 @@ static void initiator_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 	UNUSED(channel);
 	UNUSED(size);
 	char buf[10];
+	char line[256];
 	uint32_t passkey;
-	char response = 'n';
 
 	if(packet_type != HCI_EVENT_PACKET)
 		return;
@@ -153,26 +154,21 @@ static void initiator_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 			sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
 			break;
 		case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
-			printf("\n\nINIT: Confirming numeric comparison: \e[31m%06d\e[0m ? (y/n): ", sm_event_numeric_comparison_request_get_passkey(packet));
-			scanf("%c\n", &response);
-			if(response == 'y')
-			{
+			printf("\n\nRESP TO USER: \e[31m%06d\e[0m (y/n)?\n\n\n", sm_event_numeric_comparison_request_get_passkey(packet));
+			fgets(line, sizeof(line), stdin);
+			if(line[0] == 'y')
 				sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
-			}
 			else
-			{
-				printf("---------- ABORT PAIRING response: %x !!!\n", response);
-				/* TODO: Abort Pairing */
-			}
+				sm_bonding_decline(sm_event_passkey_display_number_get_handle(packet));
 			break;
 		case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
 			printf("INIT: Display Passkey: %06d\n", sm_event_passkey_display_number_get_passkey(packet));
 			break;
 		case SM_EVENT_PASSKEY_INPUT_NUMBER:
-			printf("INIT: Passkey Input requested\n Please Enter>\n");
+			printf("RESP TO USER : \e[31mPlease Enter>\e[0m");
 			fgets(buf, 10, stdin);
 			passkey = (uint32_t) atoi(buf);
-			printf("INIT: Sending passkey %06d\n", passkey);
+			// printf("RESP: Sending passkey %06d\n", passkey);
 			sm_passkey_input(sm_event_passkey_input_number_get_handle(packet), passkey);
 			break;
 		case SM_EVENT_PAIRING_COMPLETE:
@@ -345,7 +341,7 @@ int main(int argc, const char * argv[])
 	}
 
 	sscanf(argv[1], "%hhd:%hhd", (char *)&initiator_usb_device_bus, (char *)&initiator_usb_device_id);
-	printf("RESP: Using USB bus %d with address %d\n", initiator_usb_device_bus, initiator_usb_device_id);
+	printf("INIT: Using USB bus %d with address %d\n", initiator_usb_device_bus, initiator_usb_device_id);
 
 	if(sscanf_bd_addr(argv[2], target_mac) == 0)
 	{
@@ -364,7 +360,7 @@ int main(int argc, const char * argv[])
 	strcpy(pklg_path, "/tmp/hci_dump_test_initiator");
 	strcat(pklg_path, ".pklg");
 	printf("Packet Log: %s\n", pklg_path);
-	// hci_dump_open(pklg_path, HCI_DUMP_PACKETLOGGER);
+	hci_dump_posix_fs_open(pklg_path, HCI_DUMP_PACKETLOGGER);
 
 	hci_init(hci_transport_usb_instance(), NULL);
 

@@ -15,6 +15,7 @@
 #include "hal_led.h"
 #include "hci.h"
 #include "hci_dump.h"
+#include "hci_dump_posix_fs.h"
 #include "btstack_stdin.h"
 // #include "btstack_audio.h"
 #include "btstack_tlv_posix.h"
@@ -167,6 +168,7 @@ static void responder_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 	bd_addr_t addr;
 	hci_con_handle_t hci_con_handle;
 	char buf[10];
+	char line[256];
 	uint32_t passkey;
 
 	switch (packet_type)
@@ -190,14 +192,18 @@ static void responder_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 					sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
 					break;
 				case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
-					printf("\n\nRESP: Confirming numeric comparison: \e[31m%06d\e[0m\n\n\n", sm_event_numeric_comparison_request_get_passkey(packet));
-					sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
+					printf("\n\nRESP TO USER: \e[31m%06d\e[0m (y/n)?\n\n\n", sm_event_numeric_comparison_request_get_passkey(packet));
+					fgets(line, sizeof(line), stdin);
+					if(line[0] == 'y')
+						sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
+					else
+						sm_bonding_decline(sm_event_passkey_display_number_get_handle(packet));
 					break;
 				case SM_EVENT_PASSKEY_INPUT_NUMBER:
-					printf("RESP: Passkey Input requested\n Please Enter>\n");
+					printf("RESP TO USER : \e[31mPlease Enter>\e[0m");
 					fgets(buf, 10, stdin);
 					passkey = (uint32_t) atoi(buf);
-					printf("RESP: Sending passkey %06d\n", passkey);
+					// printf("RESP: Sending passkey %06d\n", passkey);
 					sm_passkey_input(sm_event_passkey_input_number_get_handle(packet), passkey);
 					break;
 				case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
@@ -332,7 +338,7 @@ int main(int argc, const char * argv[])
 	strcpy(pklg_path, "/tmp/hci_dump_test_responder");
 	strcat(pklg_path, ".pklg");
 	printf("Packet Log: %s\n", pklg_path);
-	// hci_dump_log(pklg_path, HCI_DUMP_PACKETLOGGER);
+	hci_dump_posix_fs_open(pklg_path, HCI_DUMP_PACKETLOGGER);
 
 	hci_init(hci_transport_usb_instance(), NULL);
 	l2cap_init();

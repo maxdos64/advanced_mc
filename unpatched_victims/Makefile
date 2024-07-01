@@ -82,6 +82,7 @@ COMMON += ad_parser.c
 COMMON += hci.c
 COMMON += hci_cmd.c
 COMMON += hci_dump.c
+COMMON += hci_dump_posix_fs.c
 COMMON += l2cap.c
 COMMON += l2cap_signaling.c
 COMMON += btstack_audio.c

@@ -36,6 +36,7 @@
 #include "hal_led.h"
 #include "hci.h"
 #include "hci_dump.h"
+#include "hci_dump_posix_fs.h"
 #include "btstack_stdin.h"
 // #include "btstack_audio.h"
 #include "btstack_tlv_posix.h"
@@ -59,6 +60,7 @@
 /* Helper structs */
 hci_con_handle_t connection_handle;
 uint16_t connection_id;
+bool second_stage = false;
 
 /* FDs for IPC */
 int initiator_to_master;
@@ -66,7 +68,7 @@ int initiator_from_master;
 
 /* Globals */
 bd_addr_t target_mac;
-// static uint8_t data_channel_buffer[TEST_PACKET_SIZE];
+static uint8_t data_channel_buffer[TEST_PACKET_SIZE];
 const char secret[] = "flag{INITIATOR_SECRET}";
 bd_addr_t target_address;
 uint8_t target_address_type;
@@ -122,60 +124,60 @@ static void ipc_write(int fd, char *buf, size_t size)
 	}
 }
 
-// static void l2cap_client_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
-// {
-// 	UNUSED(channel);
-// 	UNUSED(size);
-// 
-// 	bd_addr_t event_address;
-// 	uint16_t psm;
-// 	uint16_t temp_connection_id;
-// 	hci_con_handle_t handle;
-// 
-// 	switch (packet_type)
-// 	{
-// 		case HCI_EVENT_PACKET:
-// 			switch (hci_event_packet_get_type(packet))
-// 			{
-// 				case L2CAP_EVENT_CBM_CHANNEL_OPENED:
-// 					l2cap_event_cbm_channel_opened_get_address(packet, event_address);
-// 					psm = l2cap_event_cbm_channel_opened_get_psm(packet);
-// 					temp_connection_id = l2cap_event_cbm_channel_opened_get_local_cid(packet);
-// 					handle = l2cap_event_cbm_channel_opened_get_handle(packet);
-// 					if (packet[2] == 0)
-// 					{
-// 						printf("INIT: L2CAP: LE Data Channel successfully opened: %s, handle 0x%02x, psm 0x%02x, local connection_id 0x%02x, remote connection_id 0x%02x\n", bd_addr_to_str(event_address), handle, psm, temp_connection_id,  little_endian_read_16(packet, 15));
-// 						connection_id = temp_connection_id;
-// 						connection_handle = handle;
-// 						l2cap_request_can_send_now_event(connection_id);
-// 					}
-// 					else
-// 					{
-// 						printf("INIT: L2CAP: LE Data Channel connection to device %s failed. status code %u\n", bd_addr_to_str(event_address), packet[2]);
-// 					}
-// 					break;
-// 
-// 				case L2CAP_EVENT_CAN_SEND_NOW:
-// 					// printf("INIT: L2CAP Can send now\n");
-// 					l2cap_send(connection_id, (uint8_t *)secret, strlen(secret) + 1);
-// 
-// 					/* Request another packet */
-// 					sleep(1);
-// 					l2cap_request_can_send_now_event(connection_id);
-// 					break;
-// 
-// 				case L2CAP_EVENT_CHANNEL_CLOSED:
-// 					printf("INIT: L2Cap connection closed\n");
-// 					break;
-// 
-// 			}
-// 			break;
-// 
-// 		case L2CAP_DATA_PACKET:
-// 			printf("INIT: Received secret: %s\n", packet);
-// 			break;
-// 	}
-// }
+static void l2cap_client_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
+{
+	UNUSED(channel);
+	UNUSED(size);
+
+	bd_addr_t event_address;
+	uint16_t psm;
+	uint16_t temp_connection_id;
+	hci_con_handle_t handle;
+
+	switch (packet_type)
+	{
+		case HCI_EVENT_PACKET:
+			switch (hci_event_packet_get_type(packet))
+			{
+				case L2CAP_EVENT_CBM_CHANNEL_OPENED:
+					l2cap_event_cbm_channel_opened_get_address(packet, event_address);
+					psm = l2cap_event_cbm_channel_opened_get_psm(packet);
+					temp_connection_id = l2cap_event_cbm_channel_opened_get_local_cid(packet);
+					handle = l2cap_event_cbm_channel_opened_get_handle(packet);
+					if (packet[2] == 0)
+					{
+						printf("INIT: L2CAP: LE Data Channel successfully opened: %s, handle 0x%02x, psm 0x%02x, local connection_id 0x%02x, remote connection_id 0x%02x\n", bd_addr_to_str(event_address), handle, psm, temp_connection_id,  little_endian_read_16(packet, 15));
+						connection_id = temp_connection_id;
+						connection_handle = handle;
+						l2cap_request_can_send_now_event(connection_id);
+					}
+					else
+					{
+						printf("INIT: L2CAP: LE Data Channel connection to device %s failed. status code %u\n", bd_addr_to_str(event_address), packet[2]);
+					}
+					break;
+
+				case L2CAP_EVENT_CAN_SEND_NOW:
+					// printf("INIT: L2CAP Can send now\n");
+					l2cap_send(connection_id, (uint8_t *)secret, strlen(secret) + 1);
+
+					/* Request another packet */
+					sleep(1);
+					l2cap_request_can_send_now_event(connection_id);
+					break;
+
+				case L2CAP_EVENT_CHANNEL_CLOSED:
+					printf("INIT: L2Cap connection closed\n");
+					break;
+
+			}
+			break;
+
+		case L2CAP_DATA_PACKET:
+			printf("INIT: Received secret: %s\n", packet);
+			break;
+	}
+}
 
 static void initiator_sm_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size)
 {
@@ -212,14 +214,23 @@ static void initiator_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 			{
 				case ERROR_CODE_SUCCESS:
 					printf("INIT: Pairing complete, success\n");
-					/* Confirm success of PE pairing to master (and thus continue to next stage or finish) */
-					ipc_write(initiator_to_master, buf, 1);
-					/* Issue a new connection request */
-					// gap_connect(target_address, target_address_type);
-					le_device_delete_all();
-					sm_request_pairing(con_handle);
-					// printf("INIT: Establishing L2CAP channel\n");
-					// l2cap_le_create_channel(&l2cap_client_packet_handler, connection_handle, TSPX_le_psm, data_channel_buffer, sizeof(data_channel_buffer), L2CAP_LE_AUTOMATIC_CREDITS, LEVEL_2, &connection_id);
+
+					if(!second_stage)
+					{
+						/* Confirm success of PE pairing to master (and thus continue to next stage or finish) */
+						ipc_write(initiator_to_master, buf, 1);
+						second_stage = true; /* Remember that we are now in second stage */
+						/* Issue a new connection request */
+						le_device_delete_all();
+						sm_request_pairing(con_handle);
+					}
+					else
+					{
+						/* Confirm success of second stage comparison to master */
+						ipc_write(initiator_to_master, buf, 1);
+						printf("INIT: Establishing L2CAP channel\n");
+						l2cap_le_create_channel(&l2cap_client_packet_handler, connection_handle, TSPX_le_psm, data_channel_buffer, sizeof(data_channel_buffer), L2CAP_LE_AUTOMATIC_CREDITS, LEVEL_2, &connection_id);
+					}
 					break;
 				case ERROR_CODE_CONNECTION_TIMEOUT:
 					printf("INIT: Pairing failed, timeout\n");
@@ -369,8 +380,8 @@ static void initiator_set_custom_passkey(uint32_t* tk)
 
 	if (*tk < 100000)
 	{
-		printf("INIT: passkey has leading 0, abort\n");
-		raise(SIGINT);
+		printf("INIT: WARNING passkey has leading 0, abort\n");
+		// raise(SIGINT);
 	}
 	printf("INIT: new tk %d\n", *tk);
 }
@@ -424,7 +435,7 @@ int main(int argc, const char * argv[])
 	strcpy(pklg_path, "/tmp/hci_dump_test_mitm_initiator");
 	strcat(pklg_path, ".pklg");
 	printf("Packet Log: %s\n", pklg_path);
-	// hci_dump_open(pklg_path, HCI_DUMP_PACKETLOGGER);
+	hci_dump_posix_fs_open(pklg_path, HCI_DUMP_PACKETLOGGER);
 
 	hci_init(hci_transport_usb_instance(), NULL);
 

@@ -15,6 +15,7 @@
 #include "hal_led.h"
 #include "hci.h"
 #include "hci_dump.h"
+#include "hci_dump_posix_fs.h"
 #include "btstack_stdin.h"
 // #include "btstack_audio.h"
 #include "btstack_tlv_posix.h"
@@ -368,7 +369,7 @@ int main(int argc, const char * argv[])
 	strcpy(pklg_path, "/tmp/hci_dump_test_mitm_responder");
 	strcat(pklg_path, ".pklg");
 	printf("Packet Log: %s\n", pklg_path);
-	// hci_dump_open(pklg_path, HCI_DUMP_PACKETLOGGER);
+	hci_dump_posix_fs_open(pklg_path, HCI_DUMP_PACKETLOGGER);
 
 	hci_init(hci_transport_usb_instance(), NULL);
 	l2cap_init();

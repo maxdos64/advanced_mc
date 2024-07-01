@@ -15,6 +15,7 @@
 #include "hal_led.h"
 #include "hci.h"
 #include "hci_dump.h"
+#include "hci_dump_posix_fs.h"
 #include "btstack_stdin.h"
 // #include "btstack_audio.h"
 #include "btstack_tlv_posix.h"
@@ -194,10 +195,10 @@ static void responder_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 					sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
 					break;
 				case SM_EVENT_PASSKEY_INPUT_NUMBER:
-					printf("INIT: Passkey Input requested\n Please Enter>\n");
+					printf("RESP: Passkey Input requested\n Please Enter>\n");
 					fgets(buf, 10, stdin);
 					passkey = (uint32_t) atoi(buf);
-					printf("INIT: Sending passkey %06d\n", passkey);
+					printf("RESP: Sending passkey %06d\n", passkey);
 					sm_passkey_input(sm_event_passkey_input_number_get_handle(packet), passkey);
 					break;
 				case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
@@ -227,7 +228,7 @@ static void responder_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 							printf("RESP: Pairing failed, timeout\n");
 							break;
 						case ERROR_CODE_REMOTE_USER_TERMINATED_CONNECTION:
-							printf("RESP: Pairing faileed, disconnected\n");
+							printf("RESP: Pairing failed, disconnected\n");
 							break;
 						case ERROR_CODE_AUTHENTICATION_FAILURE:
 							printf("RESP: Pairing failed, reason = %u\n", sm_event_pairing_complete_get_reason(packet));
@@ -332,7 +333,7 @@ int main(int argc, const char * argv[])
 	strcpy(pklg_path, "/tmp/hci_dump_test_responder");
 	strcat(pklg_path, ".pklg");
 	printf("Packet Log: %s\n", pklg_path);
-	// hci_dump_log(pklg_path, HCI_DUMP_PACKETLOGGER);
+	hci_dump_posix_fs_open(pklg_path, HCI_DUMP_PACKETLOGGER);
 
 	hci_init(hci_transport_usb_instance(), NULL);
 	l2cap_init();
@@ -388,3 +389,12 @@ int main(int argc, const char * argv[])
 
 	return 0;
 }
+ // E06AE7674BF85296D91E183E864E2886
+ // E06AE7674BF85296D91E183E864E2886
+
+ // E06AE7674BF85296D91E183E864E2886A0
+ // E06AE7674BF85296D91E183E864E288630
+ //0000000104000C1002020202000C100202
+ //
+ //1AF00D0104000C1002020202000C100202
+ //0000000104000C1002020202000C100202

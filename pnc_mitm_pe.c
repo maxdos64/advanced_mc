@@ -107,6 +107,7 @@ int main(int argc, const char * argv[])
 	initiator_to_master   = pipe_fd[1];
 	master_from_initiator = pipe_fd[0];
 	/* Pipe between responder and master */
+	pipe(pipe_fd);
 	master_to_responder  = pipe_fd[1];
 	responder_from_master = pipe_fd[0];
 	pipe(pipe_fd);
@@ -157,23 +158,23 @@ int main(int argc, const char * argv[])
 	/* Pass va to Initiator to go through first round of PE and automatically initate second PE with victim */
 	ipc_write(master_to_initiator, buf, sizeof(uint32_t));
 
-	printf("11111111\n");
 	/* Wait for Initiator to confirm success of first PE pairing */
-	// ipc_read(master_from_initiator, buf, 1);
-	printf("2222222222222\n");
+	ipc_read(master_from_initiator, buf, 1);
 	/* Tell Responder to continue to second stage (by confirming NC) */
 	ipc_write(master_to_responder, buf, 1);
-	printf("33333\n");
 
 	/* Wait for Responder to calculate and tell us second display value (va2) */
-	printf("AAAAAA\n");
 	ipc_read(master_from_responder, buf, sizeof(uint32_t));
-	printf("BBBBB\n");
 	/* Pass va2 to Initiator to go through second round of PE */
 	ipc_write(master_to_initiator, buf, sizeof(uint32_t));
 
+	/* Wait for Initiator to confirm success of second stage */
+	ipc_read(master_from_initiator, buf, 1);
+	/* Tell Responder to continue */
+	ipc_write(master_to_responder, buf, 1);
+
 	/* TODO: Start forwarding messages */
 
-	sleep(30);
+	sleep(300);
 	kill_all_children();
 }

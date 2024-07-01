@@ -4,7 +4,7 @@ SUBDIRS := unpatched_mitm_communicators patched_mitm_communicators
 SUBDIRSCLEAN=$(addsuffix clean,$(SUBDIRS))
 
 .DEFAULT_GOAL := all
-all: pnc_mitm_pe.bin $(SUBDIRS) 
+all: pnc_mitm_pe.bin pnc_mitm_ppe.bin $(SUBDIRS) 
 
 $(SUBDIRS):
 	$(MAKE) -C $@

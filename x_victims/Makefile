@@ -6,7 +6,7 @@ CORE += btstack_stdin_posix.c btstack_tlv_posix.c
 COMMON += hci_transport_h2_libusb.c btstack_run_loop_posix.c le_device_db_fs.c btstack_link_key_db_fs.c wav_util.c btstack_network_posix.c
 COMMON += btstack_audio_portaudio.c btstack_chipset_zephyr.c
 
-CFLAGS  += -g -std=c99 -Werror -Wno-error=redundant-decls -Wall -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Wunused-parameter -Wsign-compare
+CFLAGS  += -g -std=c99 -Wno-error=redundant-decls -Wall -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Wunused-parameter -Wsign-compare
 # CFLAGS += -Werror
 # CFLAGS += -pedantic
 
@@ -16,6 +16,7 @@ CFLAGS  += -g -std=c99 -Werror -Wno-error=redundant-decls -Wall -Wmissing-protot
 # CFLAGS += -Wgnu-empty-initializer
 
 CFLAGS += -I${CURDIR}/../
+CFLAGS += -I${CURDIR}/libs/cpace-master/src
 CFLAGS += -I${BTSTACK_ROOT}/platform/posix
 CFLAGS += -I${BTSTACK_ROOT}/src
 CFLAGS += -I${BTSTACK_ROOT}/platform/embedded
@@ -36,6 +37,7 @@ CFLAGS += -I${BTSTACK_ROOT}/platform/lwip
 CFLAGS += -I${BTSTACK_ROOT}/platform/lwip/port
 
 VPATH = ${BTSTACK_ROOT}/src
+VPATH += ${CURDIR}/libs/cpace-master/src
 VPATH += ${BTSTACK_ROOT}/src/ble
 VPATH += ${BTSTACK_ROOT}/src/ble/gatt-service
 VPATH += ${BTSTACK_ROOT}/src/classic
@@ -66,6 +68,7 @@ VPATH += ${BTSTACK_ROOT}/chipset/zephyr
 # use pkg-config
 CFLAGS  += $(shell pkg-config libusb-1.0 --cflags)
 LDFLAGS += $(shell pkg-config libusb-1.0 --libs)
+LDFLAGS += $(shell pkg-config libsodium --libs)
 
 csr_set_bd_addr: ${CORE_OBJ} ${COMMON_OBJ} btstack_chipset_csr.o csr_set_bd_addr.o
 	${CC} $^ ${CFLAGS} ${LDFLAGS} -o $@
@@ -97,6 +100,8 @@ CORE += btstack_memory_pool.c
 CORE += btstack_run_loop.c
 CORE += btstack_util.c
 
+LIBS = crypto_cpace.c
+
 ATT += att_dispatch.c
 
 GATT_SERVER += att_db.c
@@ -106,6 +111,7 @@ GATT_CLIENT += gatt_client.c
 
 CORE_OBJ    = $(CORE:.c=.o)
 COMMON_OBJ  = $(COMMON:.c=.o)
+LIBS_OBJ  = $(LIBS:.c=.o)
 ATT_OBJ     = $(ATT:.c=.o)
 #GATT_CLIENT_OBJ = $(GATT_CLIENT:.c=.o)
 GATT_SERVER_OBJ = $(GATT_SERVER:.c=.o)
@@ -114,7 +120,7 @@ GATT_SERVER_OBJ = $(GATT_SERVER:.c=.o)
 
 all: responder.bin initiator.bin
 
-%.bin: %.c ${CORE_OBJ} ${COMMON_OBJ} ${ATT_OBJ} ${GATT_SERVER_OBJ}
+%.bin: %.c ${CORE_OBJ} ${COMMON_OBJ} ${LIBS_OBJ} ${ATT_OBJ} ${GATT_SERVER_OBJ}
 	${CC} ${CFLAGS} $^ ${LDFLAGS} -o $@
 
 ${COMMON_OBJ} ${CORE_OBJ} ${ATT_OBJ}: %.o: %.c

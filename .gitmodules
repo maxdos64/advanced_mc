@@ -6,3 +6,7 @@
 	path = PatchedMBTstack
 	url = git@github.com:maxdos64/MBTstack.git
 	branch = pnc_ppe
+[submodule "XMBTstack"]
+	path = XMBTstack
+	url = git@github.com:maxdos64/MBTstack.git
+	branch = xnc_xpe

@@ -51,5 +51,7 @@
 // allow for one NetKey update
 #define MAX_NR_MESH_NETWORK_KEYS      (MAX_NR_MESH_SUBNETS+1)
 
+#define X_PATCH_TIMEWINDOW_T_SECONDS 20
+
 #endif
 

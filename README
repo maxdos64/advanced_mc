@@ -1,1 +1,81 @@
-Install libsodium, libusb
+## OVERVIEW:
+	This project contains three seperate Bluetooth stack implementations.
+	1. MBTstack: Standard Bluetooth stack extended with debug hooks for debugging
+	2  PatchedMBTstack: MBTstack patched according to the works of [1], PE replaced with PPE and NC with PNC
+	3. XMBTstack: MBTstack patched according to the paper proposal, PE replaced with XPE and NC with XNC
+
+	For each of these stacks there are multiple device implementations for Bluetooth device Responder and Initiator available (we call them victims) in:
+	unpatched_victims
+	patched_victims
+	x_victims
+
+	Further this project contains two MitM implementations that are available after building in the root folder
+	pnc_mitm_pe.bin
+	pnc_mitm_ppe.bin
+
+
+## BUILDING:
+	This project requires:
+		pkg-config
+		make
+		libsodium
+		libusb
+
+	make sure to install these requirements ahead of building using your local packetmanager.
+
+	You can build all the device implementations by changing to the respective directory and running "make"
+	To build the MitM implementations you may run "make" in the root directory.
+
+## RUNNING
+	BTstack and our adaptations support a variety of Bluetooth hardware through HCI over USB (USB Bluetooth Dongles). For a complete list of tested hardware check source [2] and look out for HCI Transport: USB.
+	To run our device implementations with supported hardware you must find the usb bus and device id.
+
+	IMPORTANT NOTE: In the following we run all examples as root.
+	This is necessary to reach the usb device in every case.
+	To AVOID running the examples as root please consult to set the udev rules (or whatever is relevant on your OS) appropriately.
+
+	Example output of "lsusb": 
+	"Bus 001 Device 010: ID 0a12:0001 Cambridge Silicon Radio, Ltd Bluetooth Dongle (HCI mode)"
+	=> Bus would be 1 and Device ID 10.
+
+	### Victim Device Example
+		A Bluetooth Pairing always consists of the Initiator (the one initiating the Pairing) and the Responder.
+
+		To run any Responder example you can use the following syntax
+		sudo ./<responder_example_name> <USB_BUS>:<USB_ID> 
+
+		This will initialize the stack and the hardware and output the Bluetooth address of the ready Responder:
+		"RESP(GEN): BThack up and running on 01:AA:BB:CC:DD:EE."
+
+		To run any Responder example and start pairing with a running Responder:
+		sudo ./<initiator_example_name> <USB_BUS>:<USB_ID> <TARGET_RESPONDER_MAC_ADDRESS>
+
+		Make sure to not accidentally confuse the Responder and Initiator of different stacks.
+
+	### MitM Example
+		To run the MitM example you must provide two usb devices, one for each side of the MitM application
+		sudo ./<mitm_example_name> <USB_INITIATOR_BUS>:<USB_INITIATOR_ID> <USB_RESPONDER_BUS>:<USB_RESPONDER_ID> <TARGET_RESPONDER_MAC_ADDRESS> 
+	
+
+## CONFIGURATION
+	You can change parameters of the Bluetooth devices in the btstack_config.h file.
+	Most importantly you may adjust the Timing window for XPE and XNC by modifying X_PATCH_TIMEWINDOW_T_SECONDS
+
+
+## JAMMING
+	If you are interested in the process of leading the victim Initiator to communicate with your MitM Responder you
+	might want to check out the following project.
+	https://github.com/maxdos64/BThack
+	Here the authors implemented an end2end deception framework that achieves the sought after goal.
+
+
+
+## TROUBLESHOOTING
+	1. Check that you are not using one of the usb devices in two different programs at the same time.
+	2. Check that you are using examples of the same stack together (except of course you intentionaly plan to confuse them) ;)
+	3. With some Bluetooth USB Dongles (also internal ones) it is sometimes necessary to reset them through power cycling (plug out/plug in)
+
+
+[1] https://www.usenix.org/system/files/usenixsecurity23-shi-min.pdf
+[2] https://github.com/bluekitchen/btstack#evaluation-platforms
+[3] https://github.com/bluekitchen/btstack/blob/master/port/libusb/README.md

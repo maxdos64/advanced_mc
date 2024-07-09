@@ -118,7 +118,7 @@ GATT_SERVER_OBJ = $(GATT_SERVER:.c=.o)
 
 .DEFAULT_GOAL := all
 
-all: responder.bin initiator.bin
+all: responder.bin xnc_initiator.bin xpe_initiator.bin
 
 %.bin: %.c ${CORE_OBJ} ${COMMON_OBJ} ${LIBS_OBJ} ${ATT_OBJ} ${GATT_SERVER_OBJ}
 	${CC} ${CFLAGS} $^ ${LDFLAGS} -o $@

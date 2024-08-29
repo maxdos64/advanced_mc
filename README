@@ -55,14 +55,33 @@
 	### MitM Example
 		To run the MitM example you must provide two usb devices, one for each side of the MitM application
 		sudo ./<mitm_example_name> <USB_INITIATOR_BUS>:<USB_INITIATOR_ID> <USB_RESPONDER_BUS>:<USB_RESPONDER_ID> <TARGET_RESPONDER_MAC_ADDRESS> 
-	
+
+## Reproduce Attacks
+	To reproduce the attack PNC vs. two times PE
+	we recommend the following procedure:
+	1. Launch an *unpatched* victim responder (for the PE side)
+	2. Launch the pnc_mitm_pe.bin with target address set to the already running responder
+	3. Launch the *patched* victim Initiator with target address set to the running MitM Responder
+	4. Interact with victims according to user model
+	5. Profit $$$
+
+	To reproduce the attack PNC vs. PPE
+	we recommend the following procedure:
+	1. Launch an *patched* victim responder (for the PE side)
+	2. Launch the pnc_mitm_ppe.bin with target address set to the already running responder
+	3. Launch the *patched* victim Initiator with target address set to the running MitM Responder
+	4. Interact with victims according to user model
+	5. Profit $$$
+
+	Note: Consider the Point Jamming & Spoofing if you are interested in a even more realistic attack setup
+
 
 ## CONFIGURATION
 	You can change parameters of the Bluetooth devices in the btstack_config.h file.
 	Most importantly you may adjust the Timing window for XPE and XNC by modifying X_PATCH_TIMEWINDOW_T_SECONDS
 
 
-## JAMMING
+## SPOOFING & JAMMING
 	If you are interested in the process of leading the victim Initiator to communicate with your MitM Responder you
 	might want to check out the following project.
 	https://github.com/maxdos64/BThack

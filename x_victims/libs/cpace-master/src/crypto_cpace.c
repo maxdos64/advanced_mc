@@ -1,5 +1,19 @@
+#define MEASURE
+
+#ifdef MEASURE
+#define _GNU_SOURCE
+#include <inttypes.h>
+#include <sys/types.h>
+#include <linux/perf_event.h>
+#include <asm/unistd.h>
+#include <sys/ioctl.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#endif
 #include <sodium.h>
 #include <string.h>
+
 
 #include "crypto_cpace.h"
 
@@ -9,6 +23,20 @@
 #define hash_BLOCKSIZE 128
 
 #define COMPILER_ASSERT(X) (void) sizeof(char[(X) ? 1 : -1])
+
+#define MEASURE
+
+#ifdef MEASURE
+struct perf_event_attr pe;
+long long count;
+int fd;
+static long perf_event_open(struct perf_event_attr *hw_event, pid_t pid, int cpu, int group_fd, unsigned long flags)
+{
+	int ret;
+	ret = syscall(__NR_perf_event_open, hw_event, pid, cpu, group_fd, flags);
+	return ret;
+}
+#endif
 
 static int
 ctx_init(crypto_cpace_state *const ctx, const char *password,
@@ -86,6 +114,24 @@ crypto_cpace_init(void)
         crypto_cpace_PUBLICDATABYTES ==
             session_id_BYTES + crypto_scalarmult_ristretto255_BYTES);
 
+#ifdef MEASURE
+	 memset(&pe, 0, sizeof(struct perf_event_attr));
+
+	 pe.type = PERF_TYPE_HARDWARE;
+	 pe.size = sizeof(struct perf_event_attr);
+	 pe.config = PERF_COUNT_HW_INSTRUCTIONS;
+	 pe.disabled = 1;
+	 pe.exclude_kernel = 1;
+	 // Don't count hypervisor events.
+	 pe.exclude_hv = 1;
+
+	 fd = perf_event_open(&pe, 0, -1, -1, 0);
+	 if (fd == -1) {
+		 fprintf(stderr, "Error opening leader %llx\n", pe.config);
+		 exit(EXIT_FAILURE);
+	 }
+#endif
+
     return sodium_init();
 }
 
@@ -99,15 +145,32 @@ crypto_cpace_step1(crypto_cpace_state *ctx,
 
 )
 {
+
+#ifdef MEASURE
+	ioctl(fd, PERF_EVENT_IOC_RESET, 0);
+	ioctl(fd, PERF_EVENT_IOC_ENABLE, 0);
+#endif
     randombytes_buf(ctx->session_id, session_id_BYTES);
     if (ctx_init(ctx, password, password_len, id_a, id_a_len, id_b, id_b_len,
                  ad, ad_len) != 0) {
+#ifdef MEASURE
+	ioctl(fd, PERF_EVENT_IOC_DISABLE, 0);
+	read(fd, &count, sizeof(long long));
+
+	printf("CPACE: Used %lld instructions\n", count);
+#endif
         return -1;
     }
     memcpy(public_data, ctx->session_id, session_id_BYTES);
     memcpy(public_data + session_id_BYTES, ctx->p,
            crypto_scalarmult_ristretto255_BYTES);
 
+#ifdef MEASURE
+	ioctl(fd, PERF_EVENT_IOC_DISABLE, 0);
+	read(fd, &count, sizeof(long long));
+
+	printf("CPACE: Used %lld instructions\n", count);
+#endif
     return 0;
 }
 
@@ -120,19 +183,42 @@ crypto_cpace_step2(
     const char *id_b, unsigned char id_b_len, const unsigned char *ad,
     size_t ad_len)
 {
+#ifdef MEASURE
+	ioctl(fd, PERF_EVENT_IOC_RESET, 0);
+	ioctl(fd, PERF_EVENT_IOC_ENABLE, 0);
+#endif
     crypto_cpace_state   ctx;
     const unsigned char *ya = public_data + session_id_BYTES;
 
     memcpy(ctx.session_id, public_data, session_id_BYTES);
     if (ctx_init(&ctx, password, password_len, id_a, id_a_len, id_b, id_b_len,
                  ad, ad_len) != 0) {
+#ifdef MEASURE
+	ioctl(fd, PERF_EVENT_IOC_DISABLE, 0);
+	read(fd, &count, sizeof(long long));
+
+	printf("CPACE: Used %lld instructions\n", count);
+#endif
         return -1;
     }
     memcpy(response, ctx.p, crypto_scalarmult_ristretto255_BYTES);
     if (ctx_final(&ctx, shared_keys, ya, ya, response) != 0) {
+
+#ifdef MEASURE
+	ioctl(fd, PERF_EVENT_IOC_DISABLE, 0);
+	read(fd, &count, sizeof(long long));
+
+	printf("CPACE: Used %lld instructions\n", count);
+#endif
         return -1;
     }
     sodium_memzero(&ctx, sizeof ctx);
+#ifdef MEASURE
+	ioctl(fd, PERF_EVENT_IOC_DISABLE, 0);
+	read(fd, &count, sizeof(long long));
+
+	printf("CPACE: Used %lld instructions\n", count);
+#endif
 
     return 0;
 }

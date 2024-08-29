@@ -131,6 +131,9 @@ static void l2cap_server_packet_handler(uint8_t packet_type, uint16_t channel, u
 						printf("L2CAP: LE Data Channel successfully opened: %s, handle 0x%02x, psm 0x%02x, local connection_id 0x%02x, remote connection_id 0x%02x\n", bd_addr_to_str(event_address), handle, psm, temp_connection_id,  little_endian_read_16(packet, 15));
 						connection_id = temp_connection_id;
 						l2cap_request_can_send_now_event(connection_id);
+ #ifdef QUIT_ON_SUCCESS
+						exit(0);
+#endif
 					}
 					else
 					{
@@ -168,6 +171,7 @@ static void responder_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 	bd_addr_t addr;
 	hci_con_handle_t hci_con_handle;
 	char buf[10];
+	char line[256];
 	uint32_t passkey;
 
 	switch (packet_type)
@@ -191,8 +195,13 @@ static void responder_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 					sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
 					break;
 				case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
-					printf("\n\nRESP: Confirming numeric comparison: \e[31m%06d\e[0m\n\n\n", sm_event_numeric_comparison_request_get_passkey(packet));
-					sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
+					printf("\n\nRESP TO USER: \e[31m%06d\e[0m (y/n)?\n\n\n", sm_event_numeric_comparison_request_get_passkey(packet));
+
+					fgets(line, sizeof(line), stdin);
+					if(line[0] == 'y')
+						sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
+					else
+						sm_bonding_decline(sm_event_passkey_display_number_get_handle(packet));
 					break;
 				case SM_EVENT_PASSKEY_INPUT_NUMBER:
 					printf("RESP: Passkey Input requested\n Please Enter>\n");
@@ -334,6 +343,9 @@ int main(int argc, const char * argv[])
 	strcat(pklg_path, ".pklg");
 	printf("Packet Log: %s\n", pklg_path);
 	hci_dump_posix_fs_open(pklg_path, HCI_DUMP_PACKETLOGGER);
+	const hci_dump_t * hci_dump_impl = hci_dump_posix_fs_get_instance();
+	hci_dump_init(hci_dump_impl);
+
 
 	hci_init(hci_transport_usb_instance(), NULL);
 	l2cap_init();

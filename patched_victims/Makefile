@@ -34,6 +34,9 @@ CFLAGS += -I${BTSTACK_ROOT}/3rd-party/micro-ecc
 CFLAGS += -I${BTSTACK_ROOT}/3rd-party/yxml
 CFLAGS += -I${BTSTACK_ROOT}/platform/lwip
 CFLAGS += -I${BTSTACK_ROOT}/platform/lwip/port
+ifneq ("$(QUIT_ON_SUCCESS)", "")
+        CFLAGS+=-D QUIT_ON_SUCCESS=$(QUIT_ON_SUCCESS)
+endif
 
 VPATH = ${BTSTACK_ROOT}/src
 VPATH += ${BTSTACK_ROOT}/src/ble
@@ -112,7 +115,7 @@ GATT_SERVER_OBJ = $(GATT_SERVER:.c=.o)
 
 .DEFAULT_GOAL := all
 
-all: responder.bin initiator.bin
+all: responder.bin pnc_initiator.bin ppe_initiator.bin
 
 %.bin: %.c ${CORE_OBJ} ${COMMON_OBJ} ${ATT_OBJ} ${GATT_SERVER_OBJ}
 	${CC} ${CFLAGS} $^ ${LDFLAGS} -o $@

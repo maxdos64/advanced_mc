@@ -107,6 +107,10 @@ static void l2cap_client_packet_handler(uint8_t packet_type, uint16_t channel, u
 						connection_id = temp_connection_id;
 						connection_handle = handle;
 						l2cap_request_can_send_now_event(connection_id);
+#ifdef QUIT_ON_SUCCESS
+						exit(0);
+#endif
+
 					}
 					else
 					{
@@ -141,6 +145,7 @@ static void initiator_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 	UNUSED(channel);
 	UNUSED(size);
 	char buf[10];
+	char line[256];
 	uint32_t passkey;
 
 	if(packet_type != HCI_EVENT_PACKET)
@@ -153,17 +158,21 @@ static void initiator_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 			sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
 			break;
 		case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
-			printf("\n\nINIT: Confirming numeric comparison: \e[31m%06d\e[0m\n\n\n", sm_event_numeric_comparison_request_get_passkey(packet));
-			sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
+			printf("\n\nRESP TO USER: \e[31m%06d\e[0m (y/n)?\n\n\n", sm_event_numeric_comparison_request_get_passkey(packet));
+			fgets(line, sizeof(line), stdin);
+			if(line[0] == 'y')
+				sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
+			else
+				sm_bonding_decline(sm_event_passkey_display_number_get_handle(packet));
 			break;
 		case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
 			printf("INIT: Display Passkey: %06d\n", sm_event_passkey_display_number_get_passkey(packet));
 			break;
 		case SM_EVENT_PASSKEY_INPUT_NUMBER:
-			printf("INIT: Passkey Input requested\n Please Enter>\n");
+			printf("RESP TO USER : \e[31mPlease Enter>\e[0m");
 			fgets(buf, 10, stdin);
 			passkey = (uint32_t) atoi(buf);
-			printf("INIT: Sending passkey %06d\n", passkey);
+			// printf("RESP: Sending passkey %06d\n", passkey);
 			sm_passkey_input(sm_event_passkey_input_number_get_handle(packet), passkey);
 			break;
 		case SM_EVENT_PAIRING_COMPLETE:
@@ -356,6 +365,9 @@ int main(int argc, const char * argv[])
 	strcat(pklg_path, ".pklg");
 	printf("Packet Log: %s\n", pklg_path);
 	hci_dump_posix_fs_open(pklg_path, HCI_DUMP_PACKETLOGGER);
+	const hci_dump_t * hci_dump_impl = hci_dump_posix_fs_get_instance();
+	hci_dump_init(hci_dump_impl);
+
 
 	hci_init(hci_transport_usb_instance(), NULL);
 
@@ -381,9 +393,9 @@ int main(int argc, const char * argv[])
 	/* LE Secure Connections, Passkey Entry */
 	// sm_set_io_capabilities(IO_CAPABILITY_DISPLAY_YES_NO);
 	// sm_set_authentication_requirements(IO_CAPABILITY_NO_INPUT_NO_OUTPUT);
-	sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_DISPLAY);
+	// sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_DISPLAY);
 	// sm_set_io_capabilities(IO_CAPABILITY_KEYBOARD_ONLY);
-	// sm_set_io_capabilities(IO_CAPABILITY_DISPLAY_ONLY);
+	sm_set_io_capabilities(IO_CAPABILITY_DISPLAY_ONLY);
 	// sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION|SM_AUTHREQ_MITM_PROTECTION);
 	// sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION);
 	sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION|SM_AUTHREQ_MITM_PROTECTION);

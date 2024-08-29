@@ -35,6 +35,9 @@ CFLAGS += -I${BTSTACK_ROOT}/3rd-party/micro-ecc
 CFLAGS += -I${BTSTACK_ROOT}/3rd-party/yxml
 CFLAGS += -I${BTSTACK_ROOT}/platform/lwip
 CFLAGS += -I${BTSTACK_ROOT}/platform/lwip/port
+ifneq ("$(QUIT_ON_SUCCESS)", "")
+        CFLAGS+=-D QUIT_ON_SUCCESS=$(QUIT_ON_SUCCESS)
+endif
 
 VPATH = ${BTSTACK_ROOT}/src
 VPATH += ${CURDIR}/libs/cpace-master/src

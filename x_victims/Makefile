@@ -39,6 +39,10 @@ ifneq ("$(QUIT_ON_SUCCESS)", "")
         CFLAGS+=-D QUIT_ON_SUCCESS=$(QUIT_ON_SUCCESS)
 endif
 
+ifneq ("$(MEASURE)", "")
+        CFLAGS+=-D MEASURE=$(MEASURE)
+endif
+
 VPATH = ${BTSTACK_ROOT}/src
 VPATH += ${CURDIR}/libs/cpace-master/src
 VPATH += ${BTSTACK_ROOT}/src/ble

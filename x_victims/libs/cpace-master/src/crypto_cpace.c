@@ -1,4 +1,3 @@
-#define MEASURE
 
 #ifdef MEASURE
 #define _GNU_SOURCE
@@ -23,8 +22,6 @@
 #define hash_BLOCKSIZE 128
 
 #define COMPILER_ASSERT(X) (void) sizeof(char[(X) ? 1 : -1])
-
-#define MEASURE
 
 #ifdef MEASURE
 struct perf_event_attr pe;

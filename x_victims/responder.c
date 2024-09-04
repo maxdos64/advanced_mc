@@ -195,7 +195,7 @@ static void responder_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 					sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
 					break;
 				case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
-					printf("\n\nRESP TO USER: \e[31m%06d\e[0m (y/n)? ", sm_event_numeric_comparison_request_get_passkey(packet));
+					printf("\n\nRESP TO USER: \e[31m%06d\e[0m (y/n)? \n", sm_event_numeric_comparison_request_get_passkey(packet));
 					fgets(line, sizeof(line), stdin);
 					if(line[0] == 'y')
 						sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
@@ -319,6 +319,9 @@ int main(int argc, const char * argv[])
 	uint8_t responder_usb_device_id;
 	uint8_t responder_usb_device_bus;
 
+	setbuf(stdin, 0);
+	setbuf(stdout, 0);
+	setbuf(stderr, 0);
 
 	/* Parse arguments */
 	if(argc < 2)

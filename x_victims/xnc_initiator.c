@@ -157,7 +157,7 @@ static void initiator_sm_packet_handler(uint8_t packet_type, uint16_t channel, u
 			sm_just_works_confirm(sm_event_just_works_request_get_handle(packet));
 			break;
 		case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
-			printf("\n\nINIT TO USER: \e[31m%06d\e[0m (y/n)? ", sm_event_numeric_comparison_request_get_passkey(packet));
+			printf("\n\nINIT TO USER: \e[31m%06d\e[0m (y/n)?\n", sm_event_numeric_comparison_request_get_passkey(packet));
 
 			fgets(line, sizeof(line), stdin);
 			if(line[0] == 'y')
@@ -335,6 +335,10 @@ int main(int argc, const char * argv[])
 	char pklg_path[100];
 	uint8_t initiator_usb_device_id;
 	uint8_t initiator_usb_device_bus;
+
+	setbuf(stdin, 0);
+	setbuf(stdout, 0);
+	setbuf(stderr, 0);
 
 	/* Parse arguments */
 	if(argc < 3)

@@ -50,17 +50,20 @@ while(True):
 
     print("Running subprocess {}".format([*([binary] + binary_parameters)]))
 
-    p = Popen([binary] + binary_parameters, stdout=PIPE, stderr=STDOUT, stdin=PIPE, bufsize=1, universal_newlines=True)
+    p = Popen(["timeout", "20"] + [binary] + binary_parameters, stdout=PIPE, stderr=STDOUT, stdin=PIPE, bufsize=1, universal_newlines=True)
 
     # poll_obj = select.poll()
     # poll_obj.register(p.stdout, select.POLLIN)
     timeout = time.time() + TIMEOUT_SECONDS
     instruction_count = 0
+    cycle_count = 0
 
+    write_log = True
     while True:
         # Stop process gracefuly after time-limit
         if(time.time() > timeout):
-            p.send_signal(signal.SIGINT)
+            p.kill()
+            write_log = False
             break
 
         line = p.stdout.readline()
@@ -70,6 +73,12 @@ while(True):
             num = int(re.findall(r"\d+", line)[0])
             # print(line + ": {} instructions".format(num))
             instruction_count += num
+
+        if "cpu cycles" in line:
+            # print(line)
+            num = int(re.findall(r"\d+", line)[0])
+            # print(line + ": {} cycles".format(num))
+            cycle_count += num
 
         if "TO USER" in line:
             try:
@@ -90,9 +99,10 @@ while(True):
             p.kill()
             break
 
-    print("Execution {} instruction count: {}".format(execution_num, instruction_count))
-    log.write("{}\n".format(instruction_count))
-    execution_num += 1
+    if write_log:
+        print("Execution {} instruction count: {}, cycle count: {}".format(execution_num, instruction_count, cycle_count))
+        log.write("{}: {} instructions, {} cpu cycles\n".format(execution_num, instruction_count, cycle_count))
+        execution_num += 1
 
 if is_server:
     server.close()

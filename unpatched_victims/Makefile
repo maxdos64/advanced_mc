@@ -6,7 +6,7 @@ CORE += btstack_stdin_posix.c btstack_tlv_posix.c
 COMMON += hci_transport_h2_libusb.c btstack_run_loop_posix.c le_device_db_fs.c btstack_link_key_db_fs.c wav_util.c btstack_network_posix.c
 COMMON += btstack_audio_portaudio.c btstack_chipset_zephyr.c
 
-CFLAGS  += -g -std=c99 -Werror -Wno-error=redundant-decls -Wall -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Wunused-parameter -Wsign-compare
+CFLAGS  += -g -std=c99 -Wno-error=redundant-decls -Wall -Wmissing-prototypes -Wstrict-prototypes -Wshadow -Wunused-parameter -Wsign-compare
 # CFLAGS += -Werror
 # CFLAGS += -pedantic
 
@@ -36,6 +36,10 @@ CFLAGS += -I${BTSTACK_ROOT}/platform/lwip
 CFLAGS += -I${BTSTACK_ROOT}/platform/lwip/port
 ifneq ("$(QUIT_ON_SUCCESS)", "")
         CFLAGS+=-D QUIT_ON_SUCCESS=$(QUIT_ON_SUCCESS)
+endif
+
+ifneq ("$(MEASURE)", "")
+        CFLAGS+=-D MEASURE=$(MEASURE)
 endif
 
 VPATH = ${BTSTACK_ROOT}/src

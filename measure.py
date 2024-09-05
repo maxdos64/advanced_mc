@@ -14,7 +14,7 @@ TIMEOUT_SECONDS = 30
 if sys.argv[1] == '-s':
     print("Running as Server")
     is_server = True
-    ip = "127.0.0.1"
+    ip = "0.0.0.0"
     port = int(sys.argv[2])
     binary = sys.argv[3]
     binary_parameters = sys.argv[4:]
@@ -50,23 +50,16 @@ while(True):
 
     print("Running subprocess {}".format([*([binary] + binary_parameters)]))
 
-    p = Popen(["timeout", "20"] + [binary] + binary_parameters, stdout=PIPE, stderr=STDOUT, stdin=PIPE, bufsize=1, universal_newlines=True)
+    p = Popen(["timeout", str(TIMEOUT_SECONDS)] + [binary] + binary_parameters, stdout=PIPE, stderr=STDOUT, stdin=PIPE, bufsize=1, universal_newlines=True)
 
-    # poll_obj = select.poll()
-    # poll_obj.register(p.stdout, select.POLLIN)
-    timeout = time.time() + TIMEOUT_SECONDS
     instruction_count = 0
     cycle_count = 0
 
     write_log = True
     while True:
-        # Stop process gracefuly after time-limit
-        if(time.time() > timeout):
-            p.kill()
-            write_log = False
-            break
 
         line = p.stdout.readline()
+        print(line)
 
         if "instructions" in line:
             # print(line)
@@ -93,16 +86,36 @@ while(True):
                     # Raise any other error.
                     raise
 
+        if "Display Passkey" in line:
+            passkey = re.findall(r"\d+", line)[0]
+            s.send(passkey.encode())# Send passkey
+
+        if "Please Enter" in line:
+            passkey = s.recv(6).decode()# Send passkey
+            try:
+                p.stdin.write(passkey + "\n")
+                continue
+            except IOError as e:
+                if e.errno == errno.EPIPE or e.errno == errno.EINVAL:
+                # Stop loop on "Invalid pipe" or "Invalid argument".
+                # No sense in continuing with broken pipe.
+                    break
+                else:
+                    # Raise any other error.
+                    raise
+
 
         if "successfully opened" in line:
             print(line)
-            p.kill()
             break
 
     if write_log:
         print("Execution {} instruction count: {}, cycle count: {}".format(execution_num, instruction_count, cycle_count))
         log.write("{}: {} instructions, {} cpu cycles\n".format(execution_num, instruction_count, cycle_count))
         execution_num += 1
+
+    if p.poll() is None:
+        os.kill(p.pid, signal.SIGTERM)
 
 if is_server:
     server.close()

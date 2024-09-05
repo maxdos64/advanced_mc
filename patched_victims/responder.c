@@ -320,6 +320,10 @@ int main(int argc, const char * argv[])
 	uint8_t responder_usb_device_id;
 	uint8_t responder_usb_device_bus;
 
+	setbuf(stdin, 0);
+	setbuf(stdout, 0);
+	setbuf(stderr, 0);
+
 	/* Parse arguments */
 	if(argc < 2)
 	{

@@ -47,6 +47,7 @@
 #include "att_server.h"
 #include <libusb.h>
 #include <unistd.h>
+#include <sys/resource.h>
 
 #include "../profiles.h"
 #include "../btstack_config.h"
@@ -104,12 +105,15 @@ static void l2cap_client_packet_handler(uint8_t packet_type, uint16_t channel, u
 					if (packet[2] == 0)
 					{
 						printf("INIT: L2CAP: LE Data Channel successfully opened: %s, handle 0x%02x, psm 0x%02x, local connection_id 0x%02x, remote connection_id 0x%02x\n", bd_addr_to_str(event_address), handle, psm, temp_connection_id,  little_endian_read_16(packet, 15));
+#ifdef QUIT_ON_SUCCESS
+						struct rusage r_usage;
+						getrusage(RUSAGE_SELF,&r_usage);
+						printf("Memory usage = %ld\n", r_usage.ru_maxrss);
+						exit(0);
+#endif
 						connection_id = temp_connection_id;
 						connection_handle = handle;
 						l2cap_request_can_send_now_event(connection_id);
-#ifdef QUIT_ON_SUCCESS
-						exit(0);
-#endif
 					}
 					else
 					{

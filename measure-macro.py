@@ -132,6 +132,9 @@ while(True):
                     raise
 
 
+        if "Pairing failed" in line:
+            print(line)
+            break
         # if "successfully opened" in line:
         #     print(line)
         #     break

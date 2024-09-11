@@ -44,7 +44,6 @@ else:
     s.connect((ip, port))
 
 log = open(os.path.basename(binary)[:-4] + "_macro.msmt", 'a', buffering=1)
-locale.setlocale( locale.LC_ALL, 'en_US.UTF-8' ) 
 
 execution_num = 0
 
@@ -77,25 +76,25 @@ while(True):
 
         if "Memory usage" in line:
             print(line)
-            num = locale.atoi(re.findall(r"\d+", line)[0])
+            num = int(re.findall(r"\d+", line)[0])
             print(line + ": {} memory".format(num))
             memory_usage = num
             
         if "cycles:u" in line:
             # print(line)
-            num = locale.atoi(line.split()[0])
+            num = int(line.split()[0].replace(',', ''))
             print(line + ": {} cycles".format(num))
             cycle_count = num
 
         if "instructions:u" in line:
             # print(line)
-            num = locale.atoi(line.split()[0])
+            num = int(line.split()[0].replace(',', ''))
             print(line + ": {} instructions".format(num))
             instruction_count = num
 
         if "seconds time elapsed" in line:
             print(line)
-            num = locale.atof(line.split()[0])
+            num = float(line.split()[0].replace(',', ''))
             print("AAA: {}".format(line))
             print(line + ": {} time elapsed".format(num))
             time_elapsed = num

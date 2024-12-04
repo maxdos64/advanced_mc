@@ -1,4 +1,7 @@
 ## OVERVIEW:
+	This is the implementation corresponding to the NDSS 2025 paper "Rediscovering Method Confusion in Proposed Security Fixes for Bluetooth"[4].
+	All modifications to existing codebasis were performed by Maximilian von Tschirschnitz.
+
 	This project contains three seperate Bluetooth stack implementations.
 	1. MBTstack: Standard Bluetooth stack extended with debug hooks for debugging
 	2  PatchedMBTstack: MBTstack patched according to the works of [1], PE replaced with PPE and NC with PNC
@@ -18,7 +21,7 @@
 	This project requires:
 		pkg-config
 		make
-		libsodium
+		libsodium-dev
 		libusb
 
 	make sure to install these requirements ahead of building using your local packetmanager.
@@ -47,7 +50,7 @@
 		This will initialize the stack and the hardware and output the Bluetooth address of the ready Responder:
 		"RESP(GEN): BThack up and running on 01:AA:BB:CC:DD:EE."
 
-		To run any Responder example and start pairing with a running Responder:
+		To run any Initiator example and start pairing with a running Responder:
 		sudo ./<initiator_example_name> <USB_BUS>:<USB_ID> <TARGET_RESPONDER_MAC_ADDRESS>
 
 		Make sure to not accidentally confuse the Responder and Initiator of different stacks.
@@ -88,6 +91,36 @@
 	Here the authors implemented an end2end deception framework that achieves the sought after goal.
 
 
+## PERFORMANCE MEASUREMENT
+	To compare the performance of the various implementations we developed a client server based setup
+	that allows to automate the pairing process and simultaniously collect benchmarking data.
+	The client and server can be executed on the same or on seperate devices.
+	In any case the applications are designed to communicate over tcp sockets, so a free port must be choosen and the client must be provided with the servers IP address.
+	When initialized, the server executes the respective Responder application on the specified hardware and waits for a connection.
+	As soon as the client becomes active and establishes a connection it uses the specified Initiator application to connect to the server device.
+	Pairing is executed, and pairing values (like passkeys and comparison values) are passed over TCP between the applications.
+	There are two benchmarking options: micro and macro benchmarks.
+	The macro benchmark will measure the instruction and cycle count as well as memory usage of the whole application while the micro
+	benchmark only measures the instruction and cycle count of the cryptographic operations.
+	Furthermore every execution of BTstack generates a pcap file in the /tmp directory of the system.
+	The eval folder contains tooling to evaluate the amounted network payload sizes of a pairing. Sample pcap files
+	can be found in the network_measurements folder.
+
+	Usage:
+	To profile using the micro benchmark, enter the respective directory and run: make clean && MEASURE=1 make.
+	To profile using the macro benchmark, enter the respective directory and run: make clean &&QUIT_ON_SUCCESS=1 make.
+	Open two terminals in the root directory, one for the Initiator and one for Responder device.
+	Let us assume we are profiling a sample in `unpatched_victims',  `responder.bin' and `pe_initiator.bin'.
+	We always begin by conducting one regular pairing between the Initiator and Responder to test functionality and gather the Bluetooth address of the Responder.
+
+	Subsequently, a benchmark (e.g., in this case macro) can be run as follows.
+	On the Responder side (from the root directory):
+		sudo ./measure-macro.py -s <LISTENING_PORT> ./unpatched_victims/responder.bin <USB_BUS>:<USB_ID>
+	And on the Initiator side (root directory): 
+		sudo ./measure-macro.py -c <RESPONDER_DEVICE_IP> <RESPONDER_DEVICE_PORT> ./unpatched_victims/pe_initiator.bin <USB_BUS>:<USB_ID> <TARGET_RESPONDER_MAC_ADDRESS>
+
+	To perform a micro benchmark, you may compile the samples accordingly (MEASURE=1) and use the same syntax and procedure, only replacing `measure-macro.py' with `measure.py'.
+
 
 ## TROUBLESHOOTING
 	1. Check that you are not using one of the usb devices in two different programs at the same time.
@@ -95,6 +128,17 @@
 	3. With some Bluetooth USB Dongles (also internal ones) it is sometimes necessary to reset them through power cycling (plug out/plug in)
 
 
+## IMPLEMENTATION AND CODE CHANGES
+	We selected BTstack due to it's modular structure and modfiability.
+	We encourage further development and scruteny of our code changes.
+	For that, we refer to the src/ble/sm.c file of the XMBTstack, PatchedBTstack directories as these contain the relevant changes
+	to the Bluetooth state machine which introduce the functionality of [1] and our paper respectively.
+	For further details of the actual implementation changes we refer to the implementation sections in our publication on NDSS 2025 [4].
+
+
+
+
 [1] https://www.usenix.org/system/files/usenixsecurity23-shi-min.pdf
 [2] https://github.com/bluekitchen/btstack#evaluation-platforms
 [3] https://github.com/bluekitchen/btstack/blob/master/port/libusb/README.md
+[4] https://dx.doi.org/10.14722/ndss.2025.24310

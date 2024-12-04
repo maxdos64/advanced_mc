@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 
+# Author: Maximilian von Tschirschnitz, License: CC BY-NC-SA 
+
+# This application allows to benchmark the Bluetooth Initiator and Responder applications in this project for cycle and instruction count as well as memory usage of the application.
+# Make sure to compile the respective Responder/Initiator using make clean && MEASURE=1 make to enable the profiling.
+# Run this application once as server (-s) for the Responder and once as client (-c) for the Initiator application.
+# Provide both applications with a matching free port number and supply the (reachable) IP address of the server to the client
+# Also make sure to provide the client application with the Bluetooth address of the servers Bluetooth device.
+
 import sys
 import os
 import time
@@ -37,16 +45,20 @@ if is_server:
 
     server.listen(5)
     print("Server listening on {} {}".format(ip, port))
+    # Server (Responder) waits until Client connects
     s, addr = server.accept()
     print("Accepted Connection from {} {}".format(addr[0], addr[1]))
 else:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((ip, port))
+    # Client connects
 
+# Logging
 log = open(os.path.basename(binary)[:-4] + "_macro.msmt", 'a', buffering=1)
 
 execution_num = 0
 
+# Now both, Responder and Initiator are initialized
 while(True):
 
     print("Running subprocess {}".format([*([binary] + binary_parameters)]))
@@ -60,20 +72,8 @@ while(True):
     while True:
 
         line = p.stdout.readline()
-        # print(line)
 
-        # if "instructions" in line:
-        #     # print(line)
-        #     num = int(re.findall(r"\d+", line)[0])
-        #     # print(line + ": {} instructions".format(num))
-        #     instruction_count += num
-
-        # if "cpu cycles" in line:
-        #     # print(line)
-        #     num = int(re.findall(r"\d+", line)[0])
-        #     # print(line + ": {} cycles".format(num))
-        #     cycle_count += num
-
+        # Parsing of output of Responder/Initiator to collect benchmarking data
         if "Memory usage" in line:
             print(line)
             num = int(re.findall(r"\d+", line)[0])
@@ -100,6 +100,7 @@ while(True):
             time_elapsed = num
             break
 
+        # Detect if numeric comparison is requested -> just confirm
         if "TO USER" in line:
             try:
                 p.stdin.write("y\n")
@@ -113,10 +114,12 @@ while(True):
                     # Raise any other error.
                     raise
 
+        # Detect if Passkey transfer is requested -> send passkey over tcp socket
         if "Display Passkey" in line:
             passkey = re.findall(r"\d+", line)[0]
             s.send(passkey.encode())# Send passkey
 
+        # Enter Passkey received over tcp socket
         if "Please Enter" in line:
             passkey = s.recv(6).decode()# Send passkey
             try:
@@ -139,6 +142,7 @@ while(True):
         #     print(line)
         #     break
 
+    # One measurement cycle is finished -> write to logfile
     if write_log:
         print("Execution {} instruction count: {}, cycle count: {}, memory_usage: {}, time elapsed: {}".format(execution_num, instruction_count, cycle_count, memory_usage, time_elapsed))
         log.write("{}: {} instructions, {} cpu cycles, memory_usage {}, time_elapsed {}\n".format(execution_num, instruction_count, cycle_count, memory_usage, time_elapsed))

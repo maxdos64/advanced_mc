@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+title: Advanced Method Confusion and X-Mitigations
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Maximilian
+    family-names: von Tschirschnitz
+    email: maximilian.tschirschnitz@tum.de
+    affiliation: Technical University Munich
+    orcid: 'https://orcid.org/0000-0003-4071-3630'
+  - given-names: Moritz
+    family-names: Buhl
+    email: m.buhl@tum.de
+    affiliation: Technical University Munich
+identifiers:
+  - type: doi
+    value: 10.14722/ndss.2025.24310
+    description: Related Paper
+repository-code: 'https://github.com/maxdos64/advanced_mc'
+repository-artifact: 'https://zenodo.org/records/14214999'
+

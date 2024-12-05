@@ -16,7 +16,7 @@ authors:
     affiliation: Technical University Munich
 identifiers:
   - type: doi
-    value: 10.14722/ndss.2025.24310
+    value: 10.14722/ndss.2025.240310
     description: Related Paper
 repository-code: 'https://github.com/maxdos64/advanced_mc'
 repository-artifact: 'https://zenodo.org/records/14214999'
